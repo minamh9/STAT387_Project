@@ -4,10 +4,21 @@ author: "Mina Mehdinia, ADD Your name and push it"
 date: "2023-03-01"
 output: html_document
 ---
+```{r setup, include = F}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
+library(ROCR)       # Precision/Recall/Sens./Spec./ performance plot
+library(class)      # KNN, SOM, LVQ
+library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
+library(boot)       # LOOCV, Bootstrap
+library(caret)      # Classification/Regression Training
+# rm(list=ls())
+```
 
 
-```{r}
-german <- read.csv("german.data", sep = " ", header=T)
-
+```{r read}
+german <- read.csv("germancredit.csv", header=T)
+german
 ```
 
