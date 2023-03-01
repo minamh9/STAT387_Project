@@ -1,6 +1,6 @@
 ---
 title: "stat387"
-author: "Mina Mehdinia, ADD Your name and push it"
+author: "Mina Mehdinia, Tim Luo, ADD Your name and push it"
 date: "2023-03-01"
 output: html_document
 ---
@@ -13,6 +13,7 @@ library(class)      # KNN, SOM, LVQ
 library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
 library(boot)       # LOOCV, Bootstrap
 library(caret)      # Classification/Regression Training
+library()
 # rm(list=ls())
 ```
 
