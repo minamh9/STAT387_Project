@@ -7,6 +7,6 @@ output: html_document
 
 
 ```{r}
-read.csv("germancredit.csv.")
+#Lets start
 ```
 
