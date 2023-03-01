@@ -1,0 +1,12 @@
+---
+title: "stat387"
+author: "Mina Mehdinia, ADD Your name and push it"
+date: "2023-03-01"
+output: html_document
+---
+
+
+```{r}
+read.csv("germancredit.csv.")
+```
+
