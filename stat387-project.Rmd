@@ -4,6 +4,7 @@ author: "Mina Mehdinia, Tim Luo, Will McIntosh"
 date: "2023-03-01"
 output: html_document
 ---
+
 ```{r setup, include = F}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)  # Suite of packages incl: dplyr, ggplot2, purr, etc.
@@ -108,9 +109,6 @@ Density.Plot(german, "cards")
 ```{r}
 Density.Plot(german, "liable")
 ```
-
-
-
 
 
 
