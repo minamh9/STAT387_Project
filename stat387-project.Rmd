@@ -4,6 +4,8 @@ author: "Mina Mehdinia, Tim Luo, Will McIntosh"
 date: "2023-03-01"
 output: html_document
 ---
+# Setup
+
 ```{r setup, include = F}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)  # Suite of packages incl: dplyr, ggplot2, tidyr, etc.
@@ -19,14 +21,15 @@ library(naivebayes)
 ```
 
 ```{r read}
-german <- read.csv("germancredit.csv", header=T)
+german <- read.csv("germancredit.csv", header=T) |> 
+  rename(checking = checkingstatus1)
 
 ```
 
-<<<<<<< HEAD
+
 ```{r remove_redundancy}
 set.seed(1)
-
+newgerman
 ```
 
 
