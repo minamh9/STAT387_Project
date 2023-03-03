@@ -1,6 +1,6 @@
 ---
 title: "stat387"
-author: "Mina Mehdinia, ADD Your name and push it"
+author: "Mina Mehdinia, Tim Luo, Will McIntosh"
 date: "2023-03-01"
 output: html_document
 ---
@@ -13,14 +13,99 @@ library(class)      # KNN, SOM, LVQ
 library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
 library(boot)       # LOOCV, Bootstrap
 library(caret)      # Classification/Regression Training
+library(dplyr)      # For piping and mutation methods
+library(ggplot2)
+#library()
 # rm(list=ls())
 ```
 
-
 ```{r read}
 german <- read.csv("germancredit.csv", header=T)
-german.num = german |> select_if(~is.numeric(.))
-german.cat = german |> select(!(german.num |> colnames()))
-pairs(german.num)
+head(german)
 ```
+
+# One-Hot Encoding
+
+Below I am making dummy variables (or one-hot encodings) of the categorical variables (WMM - 3/2/23).
+
+```{r}
+dummy <- dummyVars(" ~ .", data=german)
+newgerman <- data.frame(predict(dummy, newdata = german)) 
+head(newgerman)
+```
+
+# Value Counts For Each Class Type
+
+```{r}
+german.0.default <- german[german$Default == 0, ]
+german.1.default <- german[german$Default == 1, ]
+```
+
+```{r}
+table(german.0.default$checkingstatus1)
+```
+
+```{r}
+table(german.1.default$checkingstatus1)
+```
+
+# Displaying Duration For Each Class
+
+```{r}
+names(german$duration)
+```
+
+```{r}
+Density.Plot <- function(data, column.name) {
+  
+  # Create subsets of the dataframe based on the binary class
+  df_default0 <- data[data[["Default"]] == 0,]
+  df_default1 <- data[data[["Default"]] == 1,]
+  
+  # Plot the two density plots on the same plot
+  ggplot() +
+    geom_density(data = df_default0, aes(x = df_default0[,column.name], fill = "Default 0"), alpha = 0.5) +
+    geom_density(data = df_default1, aes(x = df_default1[,column.name], fill = "Default 1"), alpha = 0.5) +
+    labs(title = paste("Distribution of", column.name, "by Default"),
+         x = column.name,
+         y = "Density") +
+    scale_fill_manual(values = c("#F8766D", "#00BFC4"), name = "Default") +
+    theme_minimal()
+}
+```
+
+# Displaying Amount For Each Class
+
+```{r}
+Density.Plot(german, "duration")
+```
+
+```{r}
+Density.Plot(german, "amount")
+```
+
+```{r}
+Density.Plot(german, "installment")
+```
+
+```{r}
+Density.Plot(german, "residence")
+```
+
+```{r}
+Density.Plot(german, "age")
+```
+
+```{r}
+Density.Plot(german, "cards")
+```
+
+```{r}
+Density.Plot(german, "liable")
+```
+
+
+
+
+
 
