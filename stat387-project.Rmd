@@ -6,23 +6,28 @@ output: html_document
 ---
 ```{r setup, include = F}
 knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
+library(tidyverse)  # Suite of packages incl: dplyr, ggplot2, purr, etc.
 library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
 library(ROCR)       # Precision/Recall/Sens./Spec./ performance plot
 library(class)      # KNN, SOM, LVQ
 library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
 library(boot)       # LOOCV, Bootstrap
 library(caret)      # Classification/Regression Training
-library(dplyr)      # For piping and mutation methods
-library(ggplot2)
+library()
 #library()
 # rm(list=ls())
 ```
 
 ```{r read}
 german <- read.csv("germancredit.csv", header=T)
-head(german)
+
 ```
+
+```{r remove_redundancy}
+set.seed(1)
+
+```
+
 
 # One-Hot Encoding
 
