@@ -1,0 +1,326 @@
+---
+title: "stat387"
+author: "Mina Mehdinia, Tim Luo, Will McIntosh"
+date: "2023-03-01"
+output: html_document
+---
+```{r setup, include = F}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
+library(ROCR)       # Precision/Recall/Sens./Spec./ performance plot
+library(class)      # KNN, SOM, LVQ
+library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
+library(boot)       # LOOCV, Bootstrap
+library(caret)      # Classification/Regression Training
+library(dplyr)      # For piping and mutation methods
+library(ggplot2)
+library(randomForest)
+library(naivebayes)
+#library()
+# rm(list=ls())
+```
+
+```{r read}
+german <- read.csv("germancredit.csv", header=T)
+head(german)
+```
+
+# Value Counts For Each Class Type
+
+```{r}
+Count.Plot <- function(data, column.name) {  
+  german.0.default <- data[data$Default == 0, ]
+  german.1.default <- data[data$Default == 1, ]
+  
+  checkingstatus.counts.0 <- table(german.0.default[column.name])
+  checkingstatus.counts.1 <- table(german.1.default[column.name])
+  
+  counts.df.0 <- as.data.frame(checkingstatus.counts.0)
+  counts.df.1 <- as.data.frame(checkingstatus.counts.1)
+  
+  colnames(counts.df.0) <- c(column.name, "count")
+  colnames(counts.df.1) <- c(column.name, "count")
+  
+  counts.df.0 <- counts.df.0 %>% mutate(class = 0)
+  counts.df.1 <- counts.df.1 %>% mutate(class = 1)
+  
+  # Combine the two data frames
+  combined_df <- rbind(counts.df.0, counts.df.1)
+  
+  # Create the plot
+  ggplot(combined_df, aes(x = combined_df[,column.name], y = count, fill = as.factor(class))) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(x = column.name, y = "Count", fill = "Class") +
+    scale_fill_manual(values = c("#F8766D", "#00BFC4")) +
+    theme_minimal()
+}
+```
+
+## Plotting Checking Status Count Per Class
+
+```{r}
+Count.Plot(german, "checkingstatus1")
+```
+
+## Plotting History Count Per Class
+
+```{r}
+Count.Plot(german, "history")
+```
+
+## Plotting Purpose Count Per Class
+
+```{r}
+Count.Plot(german, "purpose")
+```
+
+## Plotting Savings Count Per Class
+
+```{r}
+Count.Plot(german, "savings")
+```
+
+## Plotting Employ Count Per Class
+
+```{r}
+Count.Plot(german, "employ")
+```
+
+# Displaying Duration For Each Class
+
+```{r}
+Density.Plot <- function(data, column.name) {
+  
+  # Create subsets of the dataframe based on the binary class
+  df_default0 <- data[data[["Default"]] == 0,]
+  df_default1 <- data[data[["Default"]] == 1,]
+  
+  # Plot the two density plots on the same plot
+  ggplot() +
+    geom_density(data = df_default0, aes(x = df_default0[,column.name], fill = "Default 0"), alpha = 0.5) +
+    geom_density(data = df_default1, aes(x = df_default1[,column.name], fill = "Default 1"), alpha = 0.5) +
+    labs(title = paste("Distribution of", column.name, "by Default"),
+         x = column.name,
+         y = "Density") +
+    scale_fill_manual(values = c("#F8766D", "#00BFC4"), name = "Default") +
+    theme_minimal()
+}
+```
+
+# Displaying Amount For Each Class
+
+```{r}
+Density.Plot(german, "duration")
+```
+
+```{r}
+Density.Plot(german, "amount")
+```
+
+```{r}
+Density.Plot(german, "installment")
+```
+
+```{r}
+Density.Plot(german, "residence")
+```
+
+```{r}
+Density.Plot(german, "age")
+```
+
+```{r}
+Density.Plot(german, "cards")
+```
+
+```{r}
+Density.Plot(german, "liable")
+```
+
+
+# One-Hot Encoding
+
+Below I am making dummy variables (or one-hot encodings) of the categorical variables.
+
+```{r}
+dummy <- dummyVars(" ~ .", data=german)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
+head(dummy.german)
+```
+
+# RFE
+
+```{r}
+RFE <- function(data, num.features=4) {
+  # Define the predictor and response variables
+  train.X <- data[, !(names(data) %in% c("Default"))]
+  train.Y <- as.factor(data[, "Default"])
+  
+  # Define the control parameters for feature selection
+  ctrl <- rfeControl(functions = rfFuncs,
+                     method = "cv",
+                     number = 10)
+  
+  # Perform recursive feature elimination using the random forest algorithm
+  rf_rfe <- rfe(train.X, train.Y, sizes = c(1:num.features), rfeControl = ctrl)
+  
+  # Print the results
+  print(rf_rfe)
+  
+  # Plot the results
+  plot(rf_rfe, type = c("g", "o"))
+  
+  varimp_data <- data.frame(feature = row.names(varImp(rf_rfe))[1:num.features],
+                          importance = varImp(rf_rfe)[1:num.features, 1])
+
+  # Plots the variable importances
+  ggplot(data = varimp_data, 
+         aes(x = reorder(feature, -importance), y = importance, fill = feature)) +
+    geom_bar(stat="identity") + labs(x = "Features", y = "Variable Importance") + 
+    geom_text(aes(label = round(importance, 2)), vjust=1.6, color="white", size=4) + 
+    theme_bw() + theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+}
+```
+
+## Running RFE on Dummy-Variabled German Data
+
+```{r}
+RFE(german)
+```
+
+
+```{r}
+data <- german
+num.features <- 5
+
+# Define the predictor and response variables
+train.X <- data[, !(names(data) %in% c("Default"))]
+train.Y <- as.factor(data[, "Default"])
+
+# Define the control parameters for feature selection
+ctrl <- rfeControl(functions = rfFuncs,
+                   method = "cv",
+                   number = 10)
+
+# Perform recursive feature elimination using the random forest algorithm
+rf_rfe <- rfe(train.X, train.Y, sizes = c(1:num.features), rfeControl = ctrl)
+
+# Get the selected features
+predictors(rf_rfe)
+```
+
+```{r}
+predictors(rf_rfe)
+```
+
+```{r}
+
+```
+
+## Running RFE on Dummy-Variabled German Data with 10 features
+
+```{r}
+RFE(german, num.features=10)
+```
+
+## Running RFE on Dummy-Variabled German Data
+
+```{r}
+RFE(dummy.german)
+```
+
+## Running RFE on Dummy-Variabled German Data with Only 2 Variables
+
+```{r}
+RFE(dummy.german, num.features=2)
+```
+
+## Running RFE on Dummy-Variabled German Data with 10 Variables
+
+```{r}
+RFE(dummy.german, num.features=10)
+```
+
+## Running RFE on Dummy-Variabled German Data with 20 Variables
+
+```{r}
+RFE(dummy.german, num.features=20)
+```
+
+# Running PCA Dimensionality Reduction
+
+The first 26 features are statistically significant since they're ab
+
+```{r}
+# Standardize the data
+dummy.german_std <- scale(dummy.german)
+
+# Perform PCA
+german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
+
+# Interpret the results
+summary(german.pca)
+```
+
+```{r}
+# Extract the standard deviations of each principal component
+sd <- summary(german.pca)$sdev
+
+# Plot the standard deviations as a line plot
+plot(sd, type = "b", xlab = "Principal Component", ylab = "Standard Deviation")
+```
+
+# Passing PCA Results in NB
+
+```{r}
+# Extract the principal component scores
+pc_scores <- predict(german.pca, dummy.german_std)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+train_data <- pc_scores[train_index, ]
+train_label <- as.factor(dummy.german_std[train_index,"Default"])
+test_data <- pc_scores[-train_index, ]
+test_label <- as.factor(dummy.german_std[-train_index,"Default"])
+
+# Train the Naïve Bayes classifier using the training data
+model <- naive_bayes(train_data, train_label)
+
+# Predict the test data using the trained model
+model.preds <- predict(model, test_data)
+
+# Evaluate the performance of the model
+confusionMatrix(model.preds, test_label)
+```
+
+# Passing PCA Results in KNN
+
+```{r}
+# Extract the principal component scores
+pc_scores <- predict(german.pca, dummy.german_std)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+train_data <- pc_scores[train_index, ]
+train_label <- as.factor(dummy.german_std[train_index,"Default"])
+test_data <- pc_scores[-train_index, ]
+test_label <- as.factor(dummy.german_std[-train_index,"Default"])
+
+# Train the KNN classifier using the training data
+knn_model <- train(
+  x = train_data,
+  y = train_label,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 10)
+)
+
+# Predict the test data using the trained model
+knn_pred <- predict(knn_model, newdata = test_data)
+
+# Evaluate the performance of the model
+confusionMatrix(model.preds, test_label)
+```
+
