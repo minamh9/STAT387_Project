@@ -242,7 +242,7 @@ RFE(dummy.german, num.features=2)
 RFE(dummy.german, num.features=10)
 ```
 
-## Running RFE on Dummy-Variabled German Data with 20 Variables
+## Running RFE on Dummy-Variabled German Data with 20 Variables.
 
 ```{r}
 RFE(dummy.german, num.features=20)
