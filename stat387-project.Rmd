@@ -5,9 +5,3 @@ date: "2023-03-01"
 output: html_document
 ---
 
-
-```{r}
-german <- read.csv("german.data", sep = " ", header=T)
-
-```
-
