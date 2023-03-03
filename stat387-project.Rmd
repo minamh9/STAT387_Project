@@ -30,7 +30,7 @@ Below I am making dummy variables (or one-hot encodings) of the categorical vari
 
 ```{r}
 dummy <- dummyVars(" ~ .", data=german)
-newgerman <- data.frame(predict(dummy, newdata = german)) 
+newgerman <- data.frame(predict(dummy, newdata = german))
 head(newgerman)
 ```
 
