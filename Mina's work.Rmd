@@ -5,8 +5,6 @@ date: "2023-03-03"
 output: html_document
 ---
 
-
-
 ```{r}
 library(dplyr)
 library(MASS)
@@ -43,7 +41,6 @@ cm
 roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
 plot(roc.curve)
 roc.curve$auc
-
 
 ```
 
@@ -85,9 +82,6 @@ roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
 plot(roc.curve)
 roc.curve$auc
 
-
-# Print the coefficients of the LDA model
-#coef(lda_model_var)
 ```
 # QDA
 
@@ -117,11 +111,8 @@ predictions <- predict(germanQda, newdata=data.frame(test_data))
 confusionMatrix(predictions$class, test_label)
 ```
 
-
-
-
 ```{r}
-#QDA using whole dataset
+#QDA using whole data set
 germanQda <- qda(Default ~ . , dummy.german)
 
 predictions <- predict(germanQda, newdata = dummy.german)
@@ -154,6 +145,54 @@ dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions
 cm <- confusionMatrix(predictions$class, dummy.german$Default)
 cm
 roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
+
+
+
+
+```{r}
+german_glm<- glm(Default~., family=binomial, data=dummy.german)
+summary(german_glm)
+```
+we can see that among all predictors 23 of them only are significant. we can use AIC/BIC to choose them. 
+
+# AIC/Backward
+```{r}
+german_glm_back <- step(german_glm)
+```
+
+```{r}
+summary(german_glm_back)
+```
+```{r}
+short_germandata<- data.frame(dummy.german[,c("Default","checkingstatus1.A12","checkingstatus1.A13","checkingstatus1.A14","duration","history.A32",
+"history.A33","history.A34","purpose.A41","purpose.A410","purpose.A42","purpose.A43","purpose.A48","purpose.A49","amount","savings.A64","savings.A65",
+"employ.A74","installment","status.A93","others.A103","age","otherplans.A143","housing.A152","foreign.A202")])
+
+germanlda_short <- lda(Default ~ . , short_germandata)
+
+predictions_short <- predict(germanlda_short, newdata = short_germandata)
+
+short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short$class))
+
+cm <- confusionMatrix(predictions_short$class, short_germandata$Default)
+cm
+roc.curve <- roc(short_germandata$Default, predictions_short$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
+```{r}
+germanqda_short <- qda(Default ~ . , short_germandata)
+
+predictions_short2 <- predict(germanqda_short, newdata = short_germandata)
+
+short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short2$class))
+
+cm <- confusionMatrix(predictions_short2$class, short_germandata$Default)
+cm
+roc.curve <- roc(short_germandata$Default, predictions_short2$posterior[,2])
 plot(roc.curve)
 roc.curve$auc
 ```
