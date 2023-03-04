@@ -1,0 +1,121 @@
+---
+title: "mina's project"
+author: "Mina Mehdinia"
+date: "2023-03-03"
+output: html_document
+---
+
+
+
+```{r}
+library(dplyr)
+library(MASS)
+library(ggplot2)
+library(ggpubr)
+library(caret)
+library(pROC)
+```
+
+```{r}
+german <- read.csv("germancredit.csv")
+glimpse(german)
+summary(german)
+dim(german)
+
+german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
+summary(german)
+
+```
+
+```{r}
+
+dummy <- dummyVars(" ~ .", data=german)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
+
+
+model <- lda(Default ~ ., data = dummy.german)
+predictions <- predict(model, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+
+
+```
+
+```{r}
+
+set.seed(123) # set random seed for reproducibility
+trainIndex <- createDataPartition(dummy.german$Default, p = 0.7, list = FALSE)
+train <- dummy.german[, ]
+test <- dummy.german[-trainIndex, ]
+
+lda.model <- lda(Default ~ ., data = train)
+predictions <- predict(lda.model, newdata = test)
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+confusionMatrix(predictions$class, test$Default)
+
+```
+# Variance Threshold
+
+```{r}
+variances <- apply(dummy.german[, -1], 2, var)
+
+# Set a variance threshold
+threshold <- 0.1
+
+# Identify predictor variables with variance above threshold
+selected_vars <- names(variances[variances > threshold])
+
+# Fit an LDA model with selected predictor variables
+lda_model_var <- lda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
+
+
+predictions <- predict(lda_model_var, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+
+
+# Print the coefficients of the LDA model
+#coef(lda_model_var)
+```
+# QDA
+
+```{r}
+#QDA
+#dummy.german_clean <- dummy.german[, -nearZeroVar(dummy.german)]
+
+#dummy.german_clean2 <- dummy.german[complete.cases(dummy.german), ]
+
+
+
+#glm.model <- glm(Default ~ ., data = dummy.german, family = binomial())
+#summary(glm.model)
+
+# Use Wald test to identify insignificant predictors
+#wald.test <- summary(glm.model)$coefficients[, 3] / summary(glm.model)$coefficients[, 4]
+#insignificant <- wald.test > 1.96 | wald.test < -1.96
+
+# Remove insignificant predictors from the dataset
+#credit_clean <- dummy.german[, !insignificant]
+
+
+
+germanQda <- qda(Default ~ . , dummy.german)
+
+confmat_qda <-table(predict(germanQda)$class, dummy.german$Default)
+sum(diag(confmat_qda)) / sum(confmat_qda)
+
+```
+
+
