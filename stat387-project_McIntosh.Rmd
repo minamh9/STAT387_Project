@@ -17,13 +17,50 @@ library(dplyr)      # For piping and mutation methods
 library(ggplot2)
 library(randomForest)
 library(naivebayes)
+library(ROSE)  # for SMOTE
 #library()
 # rm(list=ls())
 ```
 
+
 ```{r read}
 german <- read.csv("germancredit.csv", header=T)
 head(german)
+```
+
+```{r}
+# Counting Just the rows that did not Default (Good!)
+default.0 <- dim(data[data$Default == 0, ])[1]
+default.1 <- dim(data[data$Default == 1, ])[1]
+paste("The number of those that did not default are", default.0, "and those that did default are", default.1)
+```
+
+# Checking Dataset Class Balance
+
+```{r}
+Plot.Balance <- function(data) {
+  class_counts <- data.frame(table(data$Default))
+  class_counts <- as_tibble(class_counts)
+  class_counts$class <- c("Default 0", "Default 1")
+  ggplot(class_counts, aes(x = class, y = Freq, fill=as.factor(class))) +
+    geom_bar(stat = "identity") +
+    labs(x = "Class", y = "Count", title = "Class Counts") +
+    scale_fill_manual(values=c("#F8766D", "#00BFC4")) +
+      theme_minimal()
+}
+```
+
+```{r}
+Plot.Balance(german)
+```
+
+```{r}
+# Apply SMOTE to balance the dataset
+balanced.dummy.german <- ROSE(Default ~ ., data = dummy.german, seed = 123)$data
+```
+
+```{r}
+Plot.Balance(balanced.dummy.german)
 ```
 
 # Value Counts For Each Class Type
@@ -49,10 +86,10 @@ Count.Plot <- function(data, column.name) {
   combined_df <- rbind(counts.df.0, counts.df.1)
   
   # Create the plot
-  ggplot(combined_df, aes(x = combined_df[,column.name], y = count, fill = as.factor(class))) +
-    geom_bar(stat = "identity", position = "dodge") +
-    labs(x = column.name, y = "Count", fill = "Class") +
-    scale_fill_manual(values = c("#F8766D", "#00BFC4")) +
+  ggplot(combined_df, aes(x=combined_df[,column.name], y=count, fill=as.factor(class))) +
+    geom_bar(stat="identity", position="dodge") +
+    labs(x = column.name, y="Count", fill="Class") +
+    scale_fill_manual(values=c("#F8766D", "#00BFC4")) +
     theme_minimal()
 }
 ```
@@ -323,4 +360,20 @@ knn_pred <- predict(knn_model, newdata = test_data)
 # Evaluate the performance of the model
 confusionMatrix(model.preds, test_label)
 ```
+
+
+```{r}
+# Get eigenvalues
+eigenvalues <- german.pca$eig
+
+# Create scree plot
+plot(1:length(eigenvalues$values), eigenvalues$values, type="b",
+     xlab="Principal Component", ylab="Eigenvalue", main="Scree Plot")
+```
+
+```{r}
+german.pca$eig
+```
+
+
 
