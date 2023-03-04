@@ -5,12 +5,7 @@ date: "2023-03-03"
 output: html_document
 ---
 
----
-title: "stat387"
-author: "Mina Mehdinia, ADD Your name and push it"
-date: "2023-03-01"
-output: html_document
----
+
 
 ```{r}
 library(dplyr)
@@ -18,6 +13,7 @@ library(MASS)
 library(ggplot2)
 library(ggpubr)
 library(caret)
+library(pROC)
 ```
 
 ```{r}
@@ -28,107 +24,98 @@ dim(german)
 
 german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
 summary(german)
-```
-
-
-
-```{r}
-#LDA
-germanLDA=lda(Default~.,german)
-# Confusion Matrix:
-confmat_lda <- table(predict(germanLDA)$class, german$Default)
-sum(diag(confmat_lda)) / sum(confmat_lda)
-
-
-roc.curve <- roc(german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-
-```{r}
-german2 <- german[,c("Default","duration","amount","installment","residence","age","cards","liable")]
-
-LDA2=lda(Default~.,german2)
-# Confusion Matrix:
-conf_lda2 <- table(predict(LDA2)$class, german2$Default)
-sum(diag(conf_lda2)) / sum(conf_lda2)
-
-
-roc.curve <- roc(german2$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-
-```{r}
-set.seed(123) # set random seed for reproducibility
-trainindx2 <- createDataPartition(german2$Default, p = 0.7, list = FALSE)
-train2 <- german2[, ]
-test2 <- german2[-trainIndex, ]
-
-lda.model2 <- lda(Default ~ ., data = train2)
-predictions2 <- predict(lda.model2, newdata = test2)
-german2$Default <- factor(german2$Default, levels = levels(predictions$class))
-confusionMatrix(predictions2$class, test2$Default)
 
 ```
 
 ```{r}
+
 dummy <- dummyVars(" ~ .", data=german)
-newgerman <- data.frame(predict(dummy, newdata = german)) 
-
-newgermanLDA=lda(Default~.,newgerman)
-# Confusion Matrix:
-confmat_lda2 <- table(predict(newgermanLDA)$class, newgerman$Default)
-sum(diag(confmat_lda2)) / sum(confmat_lda2)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
 
 
-roc.curve2 <- roc(newgerman$Default, predictions$posterior[,2])
-plot(roc.curve2)
-roc.curve2$auc
-```
+model <- lda(Default ~ ., data = dummy.german)
+predictions <- predict(model, newdata = dummy.german)
 
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
 
-```{r}
-#QDA
-germanQda=qda(Default~.,german2)
-confmat_qda <-table(predict(germanQda)$class, german$Default)
-sum(diag(confmat_qda)) / sum(confmat_qda)
-```
-
-```{r}
-library(caret)
-library(pROC)
-library(MASS)
-german$Default <- factor(german$Default, levels = levels(predictions$class))
-model <- lda(Default ~ ., data = german)
-predictions <- predict(model, newdata = german)
-cm <- confusionMatrix(predictions$class, german$Default)
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
 cm
-roc.curve <- roc(german$Default, predictions$posterior[,2])
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
 plot(roc.curve)
 roc.curve$auc
 
-```
 
+```
 
 ```{r}
 
 set.seed(123) # set random seed for reproducibility
-trainIndex <- createDataPartition(german$Default, p = 0.7, list = FALSE)
-train <- german[, ]
-test <- german[-trainIndex, ]
+trainIndex <- createDataPartition(dummy.german$Default, p = 0.7, list = FALSE)
+train <- dummy.german[, ]
+test <- dummy.german[-trainIndex, ]
 
 lda.model <- lda(Default ~ ., data = train)
 predictions <- predict(lda.model, newdata = test)
-
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
 confusionMatrix(predictions$class, test$Default)
 
-
 ```
+# Variance Threshold
 
 ```{r}
-set.seed(123)
-tarinIndex2 <- ceratDataPartition(german$Defa)
+variances <- apply(dummy.german[, -1], 2, var)
+
+# Set a variance threshold
+threshold <- 0.1
+
+# Identify predictor variables with variance above threshold
+selected_vars <- names(variances[variances > threshold])
+
+# Fit an LDA model with selected predictor variables
+lda_model_var <- lda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
+
+
+predictions <- predict(lda_model_var, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+
+
+# Print the coefficients of the LDA model
+#coef(lda_model_var)
+```
+# QDA
+
+```{r}
+#QDA
+#dummy.german_clean <- dummy.german[, -nearZeroVar(dummy.german)]
+
+#dummy.german_clean2 <- dummy.german[complete.cases(dummy.german), ]
+
+
+
+#glm.model <- glm(Default ~ ., data = dummy.german, family = binomial())
+#summary(glm.model)
+
+# Use Wald test to identify insignificant predictors
+#wald.test <- summary(glm.model)$coefficients[, 3] / summary(glm.model)$coefficients[, 4]
+#insignificant <- wald.test > 1.96 | wald.test < -1.96
+
+# Remove insignificant predictors from the dataset
+#credit_clean <- dummy.german[, !insignificant]
+
+
+
+germanQda <- qda(Default ~ . , dummy.german)
+
+confmat_qda <-table(predict(germanQda)$class, dummy.german$Default)
+sum(diag(confmat_qda)) / sum(confmat_qda)
+
 ```
 
 
