@@ -92,30 +92,69 @@ roc.curve$auc
 # QDA
 
 ```{r}
-#QDA
-#dummy.german_clean <- dummy.german[, -nearZeroVar(dummy.german)]
-
-#dummy.german_clean2 <- dummy.german[complete.cases(dummy.german), ]
-
-
-
-#glm.model <- glm(Default ~ ., data = dummy.german, family = binomial())
-#summary(glm.model)
-
-# Use Wald test to identify insignificant predictors
-#wald.test <- summary(glm.model)$coefficients[, 3] / summary(glm.model)$coefficients[, 4]
-#insignificant <- wald.test > 1.96 | wald.test < -1.96
-
-# Remove insignificant predictors from the dataset
-#credit_clean <- dummy.german[, !insignificant]
+# Restart the dummy german dataset
+dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
+# Standardize the data
+dummy.german_std <- scale(dummy.german)
 
 
+# Perform PCA
+german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
+# Extract the statistically significant principal component scores
+pc_scores <- predict(german.pca, dummy.german_std)
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+train_data <- dummy.german_std[train_index, ]
+train_label <- as.factor(dummy.german_std[train_index,"Default"])
+test_data <- dummy.german_std[-train_index, ]
+test_label <- as.factor(dummy.german_std[-train_index,"Default"])
 
+#QDA using PCA
+germanQda <- qda(Default ~ . , data=data.frame(train_data))
+predictions <- predict(germanQda, newdata=data.frame(test_data))
+confusionMatrix(predictions$class, test_label)
+```
+
+
+
+
+```{r}
+#QDA using whole dataset
 germanQda <- qda(Default ~ . , dummy.german)
 
-confmat_qda <-table(predict(germanQda)$class, dummy.german$Default)
-sum(diag(confmat_qda)) / sum(confmat_qda)
+predictions <- predict(germanQda, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
 
 ```
 
+
+```{r}
+
+variances <- apply(dummy.german[, -1], 2, var)
+threshold <- 0.1
+
+selected_vars <- names(variances[variances > threshold])
+
+qda_model_var <- qda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
+
+
+predictions <- predict(qda_model_var, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
 
