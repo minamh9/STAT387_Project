@@ -4,28 +4,46 @@ author: "Mina Mehdinia, Tim Luo, Will McIntosh"
 date: "2023-03-01"
 output: html_document
 ---
+# Setup
+
 ```{r setup, include = F}
-knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)  # Suite of packages incl: dplyr, ggplot2, tidyr, etc.
 library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
 library(ROCR)       # Precision/Recall/Sens./Spec./ performance plot
 library(class)      # KNN, SOM, LVQ
 library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
 library(boot)       # LOOCV, Bootstrap
 library(caret)      # Classification/Regression Training
-library(dplyr)      # For piping and mutation methods
-library(ggplot2)
 library(randomForest)
 library(naivebayes)
-#library()
 # rm(list=ls())
 ```
 
 ```{r read}
-german <- read.csv("germancredit.csv", header=T)
-head(german)
+german <- read.csv("germancredit.csv", header=T) |> 
+  rename(checking = checkingstatus1)
+
 ```
 
+
+```{r remove_redundancy}
+set.seed(1)
+newgerman
+```
+
+
+# One-Hot Encoding
+
+Below I am making dummy variables (or one-hot encodings) of the categorical variables (WMM - 3/2/23).
+
+```{r}
+dummy <- dummyVars(" ~ .", data=german)
+newgerman <- data.frame(predict(dummy, newdata = german))
+head(newgerman)
+```
+
+=======
 # Value Counts For Each Class Type
 
 ```{r}
