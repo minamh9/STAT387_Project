@@ -1,0 +1,134 @@
+---
+title: "mina's project"
+author: "Mina Mehdinia"
+date: "2023-03-03"
+output: html_document
+---
+
+---
+title: "stat387"
+author: "Mina Mehdinia, ADD Your name and push it"
+date: "2023-03-01"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(MASS)
+library(ggplot2)
+library(ggpubr)
+library(caret)
+```
+
+```{r}
+german <- read.csv("germancredit.csv")
+glimpse(german)
+summary(german)
+dim(german)
+
+german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
+summary(german)
+```
+
+
+
+```{r}
+#LDA
+germanLDA=lda(Default~.,german)
+# Confusion Matrix:
+confmat_lda <- table(predict(germanLDA)$class, german$Default)
+sum(diag(confmat_lda)) / sum(confmat_lda)
+
+
+roc.curve <- roc(german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
+
+```{r}
+german2 <- german[,c("Default","duration","amount","installment","residence","age","cards","liable")]
+
+LDA2=lda(Default~.,german2)
+# Confusion Matrix:
+conf_lda2 <- table(predict(LDA2)$class, german2$Default)
+sum(diag(conf_lda2)) / sum(conf_lda2)
+
+
+roc.curve <- roc(german2$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
+
+```{r}
+set.seed(123) # set random seed for reproducibility
+trainindx2 <- createDataPartition(german2$Default, p = 0.7, list = FALSE)
+train2 <- german2[, ]
+test2 <- german2[-trainIndex, ]
+
+lda.model2 <- lda(Default ~ ., data = train2)
+predictions2 <- predict(lda.model2, newdata = test2)
+german2$Default <- factor(german2$Default, levels = levels(predictions$class))
+confusionMatrix(predictions2$class, test2$Default)
+
+```
+
+```{r}
+dummy <- dummyVars(" ~ .", data=german)
+newgerman <- data.frame(predict(dummy, newdata = german)) 
+
+newgermanLDA=lda(Default~.,newgerman)
+# Confusion Matrix:
+confmat_lda2 <- table(predict(newgermanLDA)$class, newgerman$Default)
+sum(diag(confmat_lda2)) / sum(confmat_lda2)
+
+
+roc.curve2 <- roc(newgerman$Default, predictions$posterior[,2])
+plot(roc.curve2)
+roc.curve2$auc
+```
+
+
+```{r}
+#QDA
+germanQda=qda(Default~.,german2)
+confmat_qda <-table(predict(germanQda)$class, german$Default)
+sum(diag(confmat_qda)) / sum(confmat_qda)
+```
+
+```{r}
+library(caret)
+library(pROC)
+library(MASS)
+german$Default <- factor(german$Default, levels = levels(predictions$class))
+model <- lda(Default ~ ., data = german)
+predictions <- predict(model, newdata = german)
+cm <- confusionMatrix(predictions$class, german$Default)
+cm
+roc.curve <- roc(german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+
+```
+
+
+```{r}
+
+set.seed(123) # set random seed for reproducibility
+trainIndex <- createDataPartition(german$Default, p = 0.7, list = FALSE)
+train <- german[, ]
+test <- german[-trainIndex, ]
+
+lda.model <- lda(Default ~ ., data = train)
+predictions <- predict(lda.model, newdata = test)
+
+confusionMatrix(predictions$class, test$Default)
+
+
+```
+
+```{r}
+set.seed(123)
+tarinIndex2 <- ceratDataPartition(german$Defa)
+```
+
+
