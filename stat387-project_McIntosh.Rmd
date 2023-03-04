@@ -295,9 +295,6 @@ dummy.german_std <- scale(dummy.german)
 
 # Perform PCA
 german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
-
-# Interpret the results
-summary(german.pca)
 ```
 
 ```{r}
@@ -305,31 +302,46 @@ summary(german.pca)
 sd <- summary(german.pca)$sdev
 
 # Plot the standard deviations as a line plot
-plot(sd, type = "b", xlab = "Principal Component", ylab = "Standard Deviation")
+plot(sd, type = "b", xlab = "Principle Component", ylab = "Standard Deviation")
+```
+
+```{r}
+pov <- german.pca$sdev^2/sum(german.pca$sdev^2)
+plot(pov, type = "b", xlab = "Principal Component", ylab = "Proportion of Variance")
 ```
 
 # Passing PCA Results in NB
 
 ```{r}
-# Extract the principal component scores
-pc_scores <- predict(german.pca, dummy.german_std)
+NB.Model <- function(pca.data) {
+  # Extract the principal component scores
+  pc_scores <- predict(pca.data, dummy.german_std)
+  
+  # Split the data into training and testing sets
+  set.seed(123) # for reproducibility
+  train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+  train_data <- pc_scores[train_index, ]
+  train_label <- as.factor(dummy.german_std[train_index,"Default"])
+  test_data <- pc_scores[-train_index, ]
+  test_label <- as.factor(dummy.german_std[-train_index,"Default"])
+  
+  # Train the Naïve Bayes classifier using the training data
+  model <- naive_bayes(train_data, train_label)
+  
+  # Predict the test data using the trained model
+  return(predict(model, test_data))
+}
+```
 
-# Split the data into training and testing sets
-set.seed(123) # for reproducibility
-train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
-train_data <- pc_scores[train_index, ]
-train_label <- as.factor(dummy.german_std[train_index,"Default"])
-test_data <- pc_scores[-train_index, ]
-test_label <- as.factor(dummy.german_std[-train_index,"Default"])
-
-# Train the Naïve Bayes classifier using the training data
-model <- naive_bayes(train_data, train_label)
-
-# Predict the test data using the trained model
-model.preds <- predict(model, test_data)
+```{r}
+model.preds <- NB.Model(german.pca)
 
 # Evaluate the performance of the model
 confusionMatrix(model.preds, test_label)
+```
+
+```{r}
+pca_data <- german.pca$x[, 1:4]
 ```
 
 # Passing PCA Results in KNN
@@ -362,18 +374,6 @@ confusionMatrix(model.preds, test_label)
 ```
 
 
-```{r}
-# Get eigenvalues
-eigenvalues <- german.pca$eig
-
-# Create scree plot
-plot(1:length(eigenvalues$values), eigenvalues$values, type="b",
-     xlab="Principal Component", ylab="Eigenvalue", main="Scree Plot")
-```
-
-```{r}
-german.pca$eig
-```
 
 
 
