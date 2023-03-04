@@ -19,13 +19,15 @@ library(pROC)
 ```{r}
 german <- read.csv("germancredit.csv")
 glimpse(german)
+summary(german)
 dim(german)
 
 german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
 summary(german)
+
 ```
 
-```{r}
+```{r} 
 
 dummy <- dummyVars(" ~ .", data=german)
 dummy.german <- data.frame(predict(dummy, newdata = german)) 
@@ -87,32 +89,7 @@ roc.curve$auc
 # Print the coefficients of the LDA model
 #coef(lda_model_var)
 ```
-
 # QDA
-
-```{r}
-# Restart the dummy german dataset
-dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
-dummy.german <- data.frame(predict(dummy, newdata = german)) 
-
-# Standardize the data
-dummy.german_std <- scale(dummy.german)
-
-# Perform PCA
-german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
-
-# Extract the statistically significant principal component scores
-pc_scores <- predict(german.pca, dummy.german_std)
-
-# Split the data into training and testing sets
-set.seed(123) # for reproducibility
-train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
-train_data <- dummy.german_std[train_index, ]
-train_label <- as.factor(dummy.german_std[train_index,"Default"])
-test_data <- dummy.german_std[-train_index, ]
-test_label <- as.factor(dummy.german_std[-train_index,"Default"])
-```
-
 
 ```{r}
 #QDA
@@ -132,37 +109,13 @@ test_label <- as.factor(dummy.german_std[-train_index,"Default"])
 # Remove insignificant predictors from the dataset
 #credit_clean <- dummy.german[, !insignificant]
 
-germanQda <- qda(Default ~ . , data=data.frame(train_data))
-
-predictions <- predict(germanQda, newdata=data.frame(test_data))
-confusionMatrix(predictions$class, test_label)
-```
-
-```{r}
-head(dummy.german)
-```
 
 
-```{r}
-# Inspired by page 176 of the textbook
-weekly.qda.fit <- qda(
-  Direction ~ Lag2,
-  data = Weekly,
-  #family = binomial,
-  subset = training.subset
-)
-```
+germanQda <- qda(Default ~ . , dummy.german)
 
+confmat_qda <-table(predict(germanQda)$class, dummy.german$Default)
+sum(diag(confmat_qda)) / sum(confmat_qda)
 
-```{r}
-# Computing the confusion matrix for the testing data
-weekly.qda.pred <- predict(weekly.qda.fit, test.split)
-weekly.qda.pred$class[1:10]
-```
-
-```{r}
-qda.table <- table(weekly.qda.pred$class, test.y)
-qda.table
 ```
 
 
