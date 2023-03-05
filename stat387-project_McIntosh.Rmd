@@ -18,27 +18,57 @@ library(ggplot2)
 library(randomForest)
 library(naivebayes)
 library(ROSE)  # for SMOTE
+library(mlbench)
 #library()
 # rm(list=ls())
 ```
 
+# Import Dataset
 
 ```{r read}
 german <- read.csv("germancredit.csv", header=T)
 head(german)
 ```
 
+# One-Hot Encoding
+
+Below I am making dummy variables (or one-hot encodings) of the categorical variables. This will be used for many circumstances where qualitative data isn't allowed. For instance, performing PCA, or SMOTE. In James Gareth's book "An Introduction To Statistical Learning" (ISLR), the authors discuss one-hot encoding in Chapter 6, specifically in the context of linear regression models. In Section 6.2.2, the authors explain that when one-hot encoding a categorical variable with k levels, one should create k-1 binary variables. The reason for this is to avoid perfect multicollinearity in the model matrix, which can cause problems when fitting linear regression models.
+
+```{r}
+# One-Hot Encoding Without Removing the First Column
+dummy <- dummyVars(" ~ .", data=german)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
+head(dummy.german)
+```
+
+Below is one-hot-encoding while removing the first column.
+
+```{r}
+# Drop the first ('df' = 'drop first') column using the select() function
+dummy.german.df <- subset(dummy.german, select=-c(
+  checkingstatus1A11, historyA30, purposeA40, 
+  savingsA61, employA71, statusA91, othersA101,
+  propertyA121, otherplansA141, housingA151,
+  jobA171, teleA191, foreignA201
+))
+
+head(dummy.german.df)
+```
+
+
+# Examine Dimensions
+
 ```{r}
 # Counting Just the rows that did not Default (Good!)
-default.0 <- dim(data[data$Default == 0, ])[1]
-default.1 <- dim(data[data$Default == 1, ])[1]
+default.0 <- dim(german[german$Default == 0, ])[1]
+default.1 <- dim(german[german$Default == 1, ])[1]
 paste("The number of those that did not default are", default.0, "and those that did default are", default.1)
 ```
 
-# Checking Dataset Class Balance
+## Visualizing Dataset Class Imbalance
 
 ```{r}
-Plot.Balance <- function(data) {
+Balance.Plot <- function(data) {
   class_counts <- data.frame(table(data$Default))
   class_counts <- as_tibble(class_counts)
   class_counts$class <- c("Default 0", "Default 1")
@@ -51,8 +81,10 @@ Plot.Balance <- function(data) {
 ```
 
 ```{r}
-Plot.Balance(german)
+Balance.Plot(german)
 ```
+
+## Balance Classes
 
 ```{r}
 # Apply SMOTE to balance the dataset
@@ -60,7 +92,7 @@ balanced.dummy.german <- ROSE(Default ~ ., data = dummy.german, seed = 123)$data
 ```
 
 ```{r}
-Plot.Balance(balanced.dummy.german)
+Balance.Plot(balanced.dummy.german)
 ```
 
 # Value Counts For Each Class Type
@@ -176,16 +208,6 @@ Density.Plot(german, "liable")
 ```
 
 
-# One-Hot Encoding
-
-Below I am making dummy variables (or one-hot encodings) of the categorical variables.
-
-```{r}
-dummy <- dummyVars(" ~ .", data=german)
-dummy.german <- data.frame(predict(dummy, newdata = german)) 
-head(dummy.german)
-```
-
 # RFE
 
 ```{r}
@@ -208,81 +230,66 @@ RFE <- function(data, num.features=4) {
   # Plot the results
   plot(rf_rfe, type = c("g", "o"))
   
-  varimp_data <- data.frame(feature = row.names(varImp(rf_rfe))[1:num.features],
+  # Get the features
+  features <- row.names(varImp(rf_rfe))[1:num.features]
+  
+  varimp_data <- data.frame(feature = features,
                           importance = varImp(rf_rfe)[1:num.features, 1])
 
   # Plots the variable importances
-  ggplot(data = varimp_data, 
+  gg <- ggplot(data = varimp_data, 
          aes(x = reorder(feature, -importance), y = importance, fill = feature)) +
     geom_bar(stat="identity") + labs(x = "Features", y = "Variable Importance") + 
     geom_text(aes(label = round(importance, 2)), vjust=1.6, color="white", size=4) + 
     theme_bw() + theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+  
+  print(gg)
+  
+  target.features <- c("Default", features)
+  
+  return(subset(data, select=target.features))
 }
 ```
 
 ## Running RFE on Dummy-Variabled German Data
 
 ```{r}
-RFE(german)
-```
-
-
-```{r}
-data <- german
-num.features <- 5
-
-# Define the predictor and response variables
-train.X <- data[, !(names(data) %in% c("Default"))]
-train.Y <- as.factor(data[, "Default"])
-
-# Define the control parameters for feature selection
-ctrl <- rfeControl(functions = rfFuncs,
-                   method = "cv",
-                   number = 10)
-
-# Perform recursive feature elimination using the random forest algorithm
-rf_rfe <- rfe(train.X, train.Y, sizes = c(1:num.features), rfeControl = ctrl)
-
-# Get the selected features
-predictors(rf_rfe)
+RFE.4.German <- RFE(german)
 ```
 
 ```{r}
-predictors(rf_rfe)
-```
-
-```{r}
-
+head(RFE.4.German)
 ```
 
 ## Running RFE on Dummy-Variabled German Data with 10 features
 
 ```{r}
-RFE(german, num.features=10)
+RFE.10.German <- RFE(german, num.features=10)
 ```
+
 
 ## Running RFE on Dummy-Variabled German Data
 
 ```{r}
-RFE(dummy.german)
+RFE.4.Dummy.German <- RFE(dummy.german)
 ```
 
 ## Running RFE on Dummy-Variabled German Data with Only 2 Variables
 
 ```{r}
-RFE(dummy.german, num.features=2)
+RFE.2.Dummy.German <- RFE(dummy.german, num.features=2)
 ```
 
 ## Running RFE on Dummy-Variabled German Data with 10 Variables
 
 ```{r}
-RFE(dummy.german, num.features=10)
+RFE.10.Dummy.German <- RFE(dummy.german, num.features=10)
 ```
 
 ## Running RFE on Dummy-Variabled German Data with 20 Variables.
 
 ```{r}
-RFE(dummy.german, num.features=20)
+RFE.20.Dummy.German <- RFE(dummy.german, num.features=20)
 ```
 
 # Running PCA Dimensionality Reduction
@@ -313,67 +320,279 @@ plot(pov, type = "b", xlab = "Principal Component", ylab = "Proportion of Varian
 # Passing PCA Results in NB
 
 ```{r}
-NB.Model <- function(pca.data) {
+NB.Model.PCA <- function(pca, data) {
   # Extract the principal component scores
-  pc_scores <- predict(pca.data, dummy.german_std)
+  pc_scores <- predict(pca, data)
   
-  # Split the data into training and testing sets
+  # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
   train_data <- pc_scores[train_index, ]
-  train_label <- as.factor(dummy.german_std[train_index,"Default"])
+  train_label <- as.factor(data[train_index,"Default"])
   test_data <- pc_scores[-train_index, ]
-  test_label <- as.factor(dummy.german_std[-train_index,"Default"])
+  test_label <- as.factor(data[-train_index,"Default"])
   
   # Train the Naïve Bayes classifier using the training data
-  model <- naive_bayes(train_data, train_label)
+  nb_model <- naive_bayes(train_data, train_label)
   
-  # Predict the test data using the trained model
-  return(predict(model, test_data))
+  # # Evaluate the model performance on the test set for each value of K
+  nb_pred <- predict(nb_model, newdata=test_data)
+  nbConf <- confusionMatrix(nb_pred, test_label)
+  
+  nbPredictiction <- prediction(as.numeric(nb_pred), as.numeric(test_label))
+  nbPerf <- performance(nbPredictiction, measure = "tpr", x.measure = "fpr")
+  nbAUC <- performance(nbPredictiction, measure = "auc")
+  
+  plot(nbPerf)
+  
+  # Extract performance metrics
+  sensitivity <- slot(nbPerf, "y.values")[[1]]
+  specificity <- 1 - slot(nbPerf, "x.values")[[1]]
+  auc <- slot(nbAUC, "y.values")
+  nbError <- mean(as.numeric(nb_pred) !=as.numeric(test_label))
+  
+  # Print performance metrics
+  print(nbConf)
+  print(paste0("Sensitivity: ", sensitivity))
+  print(paste0("Specificity: ", specificity))
+  print(paste0("AUC: ", auc))
+  cat("Error rate:", nbError, "\n")
 }
 ```
 
 ```{r}
-model.preds <- NB.Model(german.pca)
+# This function gets the first number of Principle Components.
+# It requires a pca object and the number of PC's desired.
 
-# Evaluate the performance of the model
-confusionMatrix(model.preds, test_label)
+Get.First.n.PCs <- function(pca.data, n=4) {
+  # Extract the first four principal components
+  first_n_pcs <- pca.data$x[, 1:n]
+  
+  # Create a new PCA results object with only the first four principal components
+  german.pca.first.n <- pca.data
+  german.pca.first.n$x <- first_n_pcs
+  german.pca.first.n$rotation <- pca.data$rotation[, 1:n, drop = FALSE]
+  
+  return(german.pca.first.n)
+}
 ```
 
+
 ```{r}
-pca_data <- german.pca$x[, 1:4]
+NB.Model <- function(data) {
+
+  # Split the data into training and testing sets on PCA
+  set.seed(123) # for reproducibility
+  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_data <- data[train_index, ]
+  train_label <- as.factor(data[train_index,"Default"])
+  test_data <- data[-train_index, ]
+  test_label <- as.factor(data[-train_index,"Default"])
+  
+  # Train the Naïve Bayes classifier using the training data
+  nb_model <- naive_bayes(train_data, train_label)
+  
+  # # Evaluate the model performance on the test set for each value of K
+  nb_pred <- predict(nb_model, newdata=test_data)
+  nbConf <- confusionMatrix(nb_pred, test_label)
+  
+  nbPredictiction <- prediction(as.numeric(nb_pred), as.numeric(test_label))
+  nbPerf <- performance(nbPredictiction, measure = "tpr", x.measure = "fpr")
+  nbAUC <- performance(nbPredictiction, measure = "auc")
+  
+  plot(nbPerf)
+  
+  # Extract performance metrics
+  sensitivity <- slot(nbPerf, "y.values")[[1]]
+  specificity <- 1 - slot(nbPerf, "x.values")[[1]]
+  auc <- slot(nbAUC, "y.values")
+  nbError <- mean(as.numeric(nb_pred) !=as.numeric(test_label))
+  
+  # Print performance metrics
+  print(nbConf)
+  print(paste0("Sensitivity: ", sensitivity))
+  print(paste0("Specificity: ", specificity))
+  print(paste0("AUC: ", auc))
+  cat("Error rate:", nbError, "\n")
+}
+```
+
+
+# NB w/ PCA On All Components
+
+```{r}
+NB.Model.PCA(german.pca, dummy.german_std)
+```
+
+# NB w/ PCA On First Four Components
+
+```{r}
+german.pca.first.four <- Get.First.n.PCs(german.pca, 4)
+NB.Model.PCA(german.pca.first.four, dummy.german_std)
+```
+
+
+# NB w/ PCA On First Nine Components
+
+```{r}
+german.pca.first.nine <- Get.First.n.PCs(german.pca, 9)
+NB.Model.PCA(german.pca.first.nine, dummy.german_std)
+```
+
+# NB w/ PCA On First Twenty Components
+
+```{r}
+german.pca.first.twenty <- Get.First.n.PCs(german.pca, 20)
+NB.Model.PCA(german.pca.first.twenty, dummy.german_std)
 ```
 
 # Passing PCA Results in KNN
 
 ```{r}
-# Extract the principal component scores
-pc_scores <- predict(german.pca, dummy.german_std)
-
-# Split the data into training and testing sets
-set.seed(123) # for reproducibility
-train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
-train_data <- pc_scores[train_index, ]
-train_label <- as.factor(dummy.german_std[train_index,"Default"])
-test_data <- pc_scores[-train_index, ]
-test_label <- as.factor(dummy.german_std[-train_index,"Default"])
-
-# Train the KNN classifier using the training data
-knn_model <- train(
-  x = train_data,
-  y = train_label,
-  method = "knn",
-  trControl = trainControl(method = "cv", number = 10)
-)
-
-# Predict the test data using the trained model
-knn_pred <- predict(knn_model, newdata = test_data)
-
-# Evaluate the performance of the model
-confusionMatrix(model.preds, test_label)
+KNN.Model.PCA <- function(pca.data, data) {
+  
+  # Extract the principal component scores
+  pc_scores <- predict(pca.data, data)
+  
+  # Split the data into training and testing sets
+  set.seed(123) # for reproducibility
+  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_data <- pc_scores[train_index, ]
+  train_label <- as.factor(data[train_index,"Default"])
+  test_data <- pc_scores[-train_index, ]
+  test_label <- as.factor(data[-train_index,"Default"])
+  
+  # Train the KNN classifier using the training data
+  knn_model <- train(
+    x = train_data,
+    y = train_label,
+    method = "knn",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneGrid = data.frame(k = 1:30)
+  )
+  
+  # Evaluate the model performance on the test set for each value of K
+  knnPred <- predict(knn_model, newdata=test_data)
+  knnConf <- confusionMatrix(knnPred, test_label)
+  
+  # Choose the K that gives the lowest test error rate
+  kOpt <- knn_model$bestTune$k
+  
+  # Plot the tuning parameter performance
+  gg <- ggplot(knn_model$results, aes(x=k, y=Accuracy)) +
+    geom_line() +
+    geom_point(size = 3) +
+    geom_vline(xintercept=kOpt, color="red", linetype="dashed") +
+    labs(title="Tuning Parameter Performance",
+         x="K",
+         y="Accuracy") +
+    theme_minimal()
+  
+  print(gg)
+  
+  knnPredictiction <- prediction(as.numeric(knnPred), as.numeric(test_label))
+  knnPerf <- performance(knnPredictiction, measure = "tpr", x.measure = "fpr")
+  knnAUC <- performance(knnPredictiction, measure = "auc")
+  
+  plot(knnPerf)
+  
+  # Report the model performance metrics for the optimal K
+  # Extract performance metrics
+  sensitivity <- slot(knnPerf, "y.values")[[1]]
+  specificity <- 1 - slot(knnPerf, "x.values")[[1]]
+  auc <- slot(knnAUC, "y.values")
+  knnError <- mean(as.numeric(knnPred) !=as.numeric(test_label))
+  
+  # Print performance metrics
+  print(knnConf)
+  print(paste0("Sensitivity: ", sensitivity))
+  print(paste0("Specificity: ", specificity))
+  print(paste0("AUC: ", auc))
+  cat("Optimal K:", kOpt, "\n")
+  cat("Error rate:", knnError, "\n")
+}
 ```
 
 
+```{r}
+# This function takes in non PCA like data.
+KNN.Model <- function(data) {
+  
+  # One-Hot Encoding Without Removing the First Column
+  dummy <- dummyVars(" ~ .", data=data)
+  dummy.data <- data.frame(predict(dummy, newdata = data)) 
+  
+  # Standardize the data
+  dummy.data_std <- scale(dummy.data)
+  
+  # Split the data into training and testing sets
+  set.seed(123) # for reproducibility
+  train_index <- sample(nrow(dummy.data_std), nrow(dummy.data_std) * 0.7) # 70% for training
+  train_data <- dummy.data_std[train_index, ]
+  train_label <- as.factor(dummy.data_std[train_index,"Default"])
+  test_data <- dummy.data_std[-train_index, ]
+  test_label <- as.factor(dummy.data_std[-train_index,"Default"])
+  
+  # Train the KNN classifier using the training data
+  knn_model <- train(
+    x = train_data,
+    y = train_label,
+    method = "knn",
+    trControl = trainControl(method = "cv", number = 10),
+    tuneGrid = data.frame(k = 1:30)
+  )
+  
+  # Evaluate the model performance on the test set for each value of K
+  knnPred <- predict(knn_model, newdata=test_data)
+  knnConf <- confusionMatrix(knnPred, test_label)
+  
+  # Choose the K that gives the lowest test error rate
+  kOpt <- knn_model$bestTune$k
+  
+  # Plot the tuning parameter performance
+  gg <- ggplot(knn_model$results, aes(x=k, y=Accuracy)) +
+    geom_line() +
+    geom_point(size = 3) +
+    geom_vline(xintercept=kOpt, color="red", linetype="dashed") +
+    labs(title="Tuning Parameter Performance",
+         x="K",
+         y="Accuracy") +
+    theme_minimal()
+  
+  print(gg)
+  
+  knnPredictiction <- prediction(as.numeric(knnPred), as.numeric(test_label))
+  knnPerf <- performance(knnPredictiction, measure = "tpr", x.measure = "fpr")
+  knnAUC <- performance(knnPredictiction, measure = "auc")
+  
+  plot(knnPerf)
+  
+  # Report the model performance metrics for the optimal K
+  # Extract performance metrics
+  sensitivity <- slot(knnPerf, "y.values")[[1]]
+  specificity <- 1 - slot(knnPerf, "x.values")[[1]]
+  auc <- slot(knnAUC, "y.values")
+  knnError <- mean(as.numeric(knnPred) !=as.numeric(test_label))
+  
+  # Print performance metrics
+  print(knnConf)
+  print(paste0("Sensitivity: ", sensitivity))
+  print(paste0("Specificity: ", specificity))
+  print(paste0("AUC: ", auc))
+  cat("Optimal K:", kOpt, "\n")
+  cat("Error rate:", knnError, "\n")
+}
+```
 
+```{r}
+KNN.Model.PCA(german.pca, dummy.german_std)
+```
 
+```{r}
+KNN.Model(RFE.4.German)
+```
+
+```{r}
+KNN.Model(RFE.10.German)
+```
 
