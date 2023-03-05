@@ -1,0 +1,199 @@
+---
+title: "mina's project"
+author: "Mina Mehdinia"
+date: "2023-03-03"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(MASS)
+library(ggplot2)
+library(ggpubr)
+library(caret)
+library(pROC)
+```
+
+```{r}
+german <- read.csv("germancredit.csv")
+glimpse(german)
+summary(german)
+dim(german)
+
+german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
+summary(german)
+
+```
+
+```{r} 
+
+dummy <- dummyVars(" ~ .", data=german)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
+
+
+model <- lda(Default ~ ., data = dummy.german)
+predictions <- predict(model, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+
+```
+
+```{r}
+
+set.seed(123) # set random seed for reproducibility
+trainIndex <- createDataPartition(dummy.german$Default, p = 0.7, list = FALSE)
+train <- dummy.german[, ]
+test <- dummy.german[-trainIndex, ]
+
+lda.model <- lda(Default ~ ., data = train)
+predictions <- predict(lda.model, newdata = test)
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+confusionMatrix(predictions$class, test$Default)
+
+```
+# Variance Threshold
+
+```{r}
+variances <- apply(dummy.german[, -1], 2, var)
+
+# Set a variance threshold
+threshold <- 0.1
+
+# Identify predictor variables with variance above threshold
+selected_vars <- names(variances[variances > threshold])
+
+# Fit an LDA model with selected predictor variables
+lda_model_var <- lda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
+
+
+predictions <- predict(lda_model_var, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+
+```
+# QDA
+
+```{r}
+# Restart the dummy german dataset
+dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
+# Standardize the data
+dummy.german_std <- scale(dummy.german)
+
+
+# Perform PCA
+german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
+# Extract the statistically significant principal component scores
+pc_scores <- predict(german.pca, dummy.german_std)
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+train_data <- dummy.german_std[train_index, ]
+train_label <- as.factor(dummy.german_std[train_index,"Default"])
+test_data <- dummy.german_std[-train_index, ]
+test_label <- as.factor(dummy.german_std[-train_index,"Default"])
+
+#QDA using PCA
+germanQda <- qda(Default ~ . , data=data.frame(train_data))
+predictions <- predict(germanQda, newdata=data.frame(test_data))
+confusionMatrix(predictions$class, test_label)
+```
+
+```{r}
+#QDA using whole data set
+germanQda <- qda(Default ~ . , dummy.german)
+
+predictions <- predict(germanQda, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+
+```
+
+
+```{r}
+
+variances <- apply(dummy.german[, -1], 2, var)
+threshold <- 0.1
+
+selected_vars <- names(variances[variances > threshold])
+
+qda_model_var <- qda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
+
+
+predictions <- predict(qda_model_var, newdata = dummy.german)
+
+dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
+
+cm <- confusionMatrix(predictions$class, dummy.german$Default)
+cm
+roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
+
+
+
+
+```{r}
+german_glm<- glm(Default~., family=binomial, data=dummy.german)
+summary(german_glm)
+```
+we can see that among all predictors 23 of them only are significant. we can use AIC/BIC to choose them. 
+
+# AIC/Backward
+```{r}
+german_glm_back <- step(german_glm)
+```
+
+```{r}
+summary(german_glm_back)
+```
+```{r}
+short_germandata<- data.frame(dummy.german[,c("Default","checkingstatus1.A12","checkingstatus1.A13","checkingstatus1.A14","duration","history.A32",
+"history.A33","history.A34","purpose.A41","purpose.A410","purpose.A42","purpose.A43","purpose.A48","purpose.A49","amount","savings.A64","savings.A65",
+"employ.A74","installment","status.A93","others.A103","age","otherplans.A143","housing.A152","foreign.A202")])
+
+germanlda_short <- lda(Default ~ . , short_germandata)
+
+predictions_short <- predict(germanlda_short, newdata = short_germandata)
+
+short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short$class))
+
+cm <- confusionMatrix(predictions_short$class, short_germandata$Default)
+cm
+roc.curve <- roc(short_germandata$Default, predictions_short$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
+```{r}
+germanqda_short <- qda(Default ~ . , short_germandata)
+
+predictions_short2 <- predict(germanqda_short, newdata = short_germandata)
+
+short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short2$class))
+
+cm <- confusionMatrix(predictions_short2$class, short_germandata$Default)
+cm
+roc.curve <- roc(short_germandata$Default, predictions_short2$posterior[,2])
+plot(roc.curve)
+roc.curve$auc
+```
+
