@@ -9,7 +9,7 @@ output: html_document
 ```{r setup, include = F}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)  # Suite of packages incl: dplyr, ggplot2, tidyr, etc.
-library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
+library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc.
 library(ROCR)       # Precision/Recall/Sens./Spec./ performance plot
 library(class)      # KNN, SOM, LVQ
 library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
@@ -29,7 +29,7 @@ german <- read.csv("germancredit.csv", header=T) |>
 
 ```{r remove_redundancy}
 set.seed(1)
-newgerman
+
 ```
 
 
@@ -70,7 +70,7 @@ Count.Plot <- function(data, column.name) {
   ggplot(combined_df, aes(x = combined_df[,column.name], y = count, fill = as.factor(class))) +
     geom_bar(stat = "identity", position = "dodge") +
     labs(x = column.name, y = "Count", fill = "Class") +
-    scale_fill_manual(values = c("#F8766D", "#00BFC4")) +
+    scale_fill_manual(values = c("#00BFC4", "#F8766D")) +
     theme_minimal()
 }
 ```
@@ -78,7 +78,7 @@ Count.Plot <- function(data, column.name) {
 ## Plotting Checking Status Count Per Class
 
 ```{r}
-Count.Plot(german, "checkingstatus1")
+Count.Plot(german, "checking")
 ```
 
 ## Plotting History Count Per Class
