@@ -196,4 +196,38 @@ roc.curve <- roc(short_germandata$Default, predictions_short2$posterior[,2])
 plot(roc.curve)
 roc.curve$auc
 ```
+```{r}
+# Split data into training and test sets
+train <- dummy.german[]
+test <- dummy.german[]
+# Fit logistic regression model using training data
+glmmodel <- glm(Default ~ ., data = train, family = binomial)
+summary(glmmodel)
+# Make predictions on test data
+predictions <- ifelse(predict(glmmodel, newdata = test, type = "response") > 0.5, "Up", "Down")
+# confusion matrix
+conf_matrix <- table(predictions, test$Default)
+conf_matrix
+# Calculate overall fraction of correct predictions
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+accuracy
+
+
+```
+
+```{r}
+trainIndex <- createDataPartition(dummy.german$Default, p = 0.7, list = FALSE)
+train02 <- dummy.german[, ]
+test02 <- dummy.german[-trainIndex, ]
+
+glmmodel02 <- glm(Default ~ ., data = train02, family = binomial)
+summary(glmmodel02)
+
+predictions02 <- ifelse(predict(glmmodel02, newdata = test02, type = "response") > 0.5, "Up", "Down")
+conf_matrix02 <- table(predictions02, test02$Default)
+conf_matrix02
+accuracy02 <- sum(diag(conf_matrix02)) / sum(conf_matrix02)
+accuracy02
+
+```
 
