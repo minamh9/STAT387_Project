@@ -26,6 +26,7 @@ german <- read.csv("germancredit.csv", header=T) |>
   mutate(status_fix = ifelse(status  %in% c("A91", "A94"), "A96", status),
          .after = status)
 
+# Example: dict["A12"] -> "0 to 200 DM"
 dict = c("A11" = "Less than 0 DM",
          "A12" = "0 to 200 DM",
          "A13" = "More than 200 DM",
