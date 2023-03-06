@@ -43,7 +43,6 @@ newgerman <- data.frame(predict(dummy, newdata = german))
 head(newgerman)
 ```
 
-=======
 # Value Counts For Each Class Type
 
 ```{r}
