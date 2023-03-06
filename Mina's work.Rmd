@@ -228,6 +228,5 @@ conf_matrix02 <- table(predictions02, test02$Default)
 conf_matrix02
 accuracy02 <- sum(diag(conf_matrix02)) / sum(conf_matrix02)
 accuracy02
-
 ```
 
