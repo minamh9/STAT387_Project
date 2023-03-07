@@ -234,7 +234,7 @@ KNN.Model(dummy.german.std)
 ```
 
 ```{r}
-KNN.Model(RFE.4.German)
+KNN.Model(RFE.4.German) 
 ```
 
 ```{r}
