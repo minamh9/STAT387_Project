@@ -53,6 +53,11 @@ Balance.Plot(german)
 # SMOTE Requires dummy variables
 dummy.german <- GetDummies(german)
 
+# Deal with multicolinearity for one-hot-encoded dataset
+dummy.df = GetDummies(german, dropFirst = T)
+
+
+
 # Apply SMOTE to balance the dataset
 balanced.dummy.german <- ROSE(Default ~ ., data = dummy.german, seed = 123)$data
 ```
@@ -194,9 +199,6 @@ plot(pov, type = "b", xlab = "Principal Component", ylab = "Proportion of Varian
 
 # NB w/ PCA On All Components
 
-```{r}
-NB.Model.PCA(german.pca, dummy.german.std)
-```
 
 ```{r}
 NB.Model(dummy.german.std)
@@ -206,21 +208,19 @@ NB.Model(dummy.german.std)
 
 ```{r}
 german.pca.first.four <- Get.First.n.PCs(german.pca, 4)
-NB.Model.PCA(german.pca.first.four, dummy.german_std)
+plot(german.pca.first.four$rotation)
 ```
 
 # NB w/ PCA On First Nine Components
 
 ```{r}
 german.pca.first.nine <- Get.First.n.PCs(german.pca, 9)
-NB.Model.PCA(german.pca.first.nine, dummy.german_std)
 ```
 
 # NB w/ PCA On First Twenty Components
 
 ```{r}
 german.pca.first.twenty <- Get.First.n.PCs(german.pca, 20)
-NB.Model.PCA(german.pca.first.twenty, dummy.german_std)
 ```
 
 ```{r}
