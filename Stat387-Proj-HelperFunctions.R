@@ -348,7 +348,7 @@ KNN.Model <- function(data) {
   print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
   
   return(false_positives_percent)
-}
+} 
 
 #===============================================================================
 #======================================= LDA ===================================
