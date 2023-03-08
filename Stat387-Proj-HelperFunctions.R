@@ -563,6 +563,70 @@ QDA.Model <- function(data) {
 
 
 
+#===============================================================================
+#======================================= GLM ===================================
+#===============================================================================
+glm_func <- function(data) {
+  
+  # Split the data into training and testing sets on PCA
+  set.seed(123) # for reproducibility
+  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_data <- data[train_index, ]
+  test_data <- data[-train_index, ]
+  test_label <- data[-train_index,"Default"]
+  
+  
+  # Train the GLM model using the training data
+  glm_model <- glm(Default ~ ., data = train_data, family = binomial(link = "logit"))
+  
+  # Evaluate the model performance on the test set
+  glm_pred <- predict(glm_model, newdata = test_data, type = "response")
+  glm_pred <- ifelse(glm_pred >= 0.5, 1, 0)
+  
+  glmConf <- confusionMatrix(factor(glm_pred, levels = c(0,1)), factor(test_data$Default, levels = c(0,1)))
+  
+  # Get predictions
+  pred_obj <- prediction(glm_pred,test_label)
+  
+  # Plot ROC Curve
+  perf <- performance(pred_obj, measure = "tpr", x.measure = "fpr")
+  plot(perf, main = "ROC Curve", col = "blue", lwd = 2, legacy.axes = TRUE)
+  abline(a = 0, b = 1, lty = 2, col = "red")
+  
+  glmPredictiction <- prediction(as.numeric(glm_pred), as.numeric(test_label))
+  glmPerf <- performance(glmPredictiction, measure = "tpr", x.measure = "fpr")
+  glmAUC <- performance(glmPredictiction, measure = "auc")
+  
+  print(plot(glmPerf))
+  
+  # Extract performance metrics
+  sensitivity <- slot(glmPerf, "y.values")[[1]]
+  specificity <- 1 - slot(glmPerf, "x.values")[[1]]
+  auc <- slot(glmAUC, "y.values")
+  glmError <- mean(as.numeric(glm_pred) !=as.numeric(test_label))
+  
+  # Print performance metrics
+  print(glmConf)
+  print(paste0("Sensitivity: ", sensitivity))
+  print(paste0("Specificity: ", specificity))
+  print(paste0("AUC: ", auc))
+  print(paste0("Error rate:", glmError))
+  
+  # Calculate false positives
+  false_positives <- sum(as.numeric(glm_pred) == 1 & as.numeric(test_label) == 0)
+  
+  # Calculate false positives as a percentage
+  total_negatives <- sum(as.numeric(test_label) == 0)
+  false_positives_percent <- false_positives / total_negatives * 100
+  
+  # Print the false positives percentage
+  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
+  
+  return(false_positives_percent)
+}
+
+
+
 
 
 
