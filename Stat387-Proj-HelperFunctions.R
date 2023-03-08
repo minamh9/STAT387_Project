@@ -559,6 +559,70 @@ QDA.Model <- function(data) {
   return(false_positives_percent)
 }
 
+#===============================================================================
+#======================================= DICT ==================================
+#===============================================================================
+
+# Example: dict["A12"] -> "0 to 200 DM"
+colname.dict = c(
+  "A11" = "Less than 0 DM",
+   "A12" = "0 to 200 DM",
+   "A13" = "More than 200 DM",
+   "A14" = "No checking account",
+   "A30" = "No credit taken or all credit paid back",
+   "A31" = "All credits at this bank paid back",
+   "A32" = "Existing credits bac back until now",
+   "A33" = "Delay in paying off credit in the past",
+   "A34" = "Critical account or other credits existing",
+   "A40" = "Car (new)",
+   "A41" = "Car (used)",
+   "A42" = "Furniture/equipment",
+   "A43" = "Radio/television",
+   "A44" = "Domestic appliances",
+   "A45" = "Repairs",
+   "A46" = "Ecuation",
+   "A47" = "Vacation",
+   "A48" = "Retraining",
+   "A49" = "Business",
+   "A410" = "Other",
+   "A61" = "Less than 100 DM",
+   "A62" = "100 to 500 DM",
+   "A63" = "500 to 1,000 DM",
+   "A64" = "More than 1,000 DM",
+   "A65" = "Unknown/no savings account",
+   "A71" = "Unemployed",
+   "A72" = "Less than 1 year",
+   "A73" = "1 to 4 years",
+   "A74" = "4 to 7 years",
+   "A75" = "More than 7 years",
+   "A91" = "Male (divorced/separated)",
+   "A92" = "Female (divorced/separated/married)",
+   "A93" = "Male (single)",
+   "A94" = "Male (married/widowed)",
+   "A95" = "Female (single)",
+   "A96" = "Male (divorced/separated/married)",
+   "A101" = "None",
+   "A102" = "Co-applicant",
+   "A103" = "Guarantor",
+   "A121" = "Real estate",
+   "A122" = "Building society savings agreement/life insurance",
+   "A123" = "Car or other",
+   "A124" = "Unknown/no property",
+   "A141" = "Bank",
+   "A142" = "Stores",
+   "A143" = "None",
+   "A151" = "Rent",
+   "A152" = "Own",
+   "A153" = "Free",
+   "A171" = "Unemployed/unskilled (non-resident)",
+   "A172" = "Unemployed/unskilled (resident)",
+   "A173" = "Skilled employee/official",
+   "A174" = "Management/self-employed/highly qualified employee/officer",
+   "A191" = "None",
+   "A192" = "Yes (registered uner the customer's name)",
+   "A201" = "Yes",
+   "A202" = "No"
+)
 
 
 
