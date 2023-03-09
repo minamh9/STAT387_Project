@@ -114,14 +114,21 @@ Get.First.n.PCs <- function(data, n=4) {
 ## LDA
 
 ```{r}
-LDA.Model <- function(data, train = 0.7) {
+LDA.Model <- function(data, train = 1, test = 0.5) {
   # Split the data into training and testing sets
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * train)
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
+  if(train == 1) {
+    test_index = sample(nrow(data), nrow(data) * test)
+    test_data = data[test_index, ]
+    test_label = as.factor(data[test_index, "Default"])
+  }
+  else {
+    test_data <- data[-train_index, ]
+    test_label <- as.factor(data[-train_index,"Default"])
+  }
   
   # Run LDA and predictions
   germanlda_short <- lda(Default ~ . , data.frame(train_data))
@@ -182,14 +189,21 @@ LDA.Model <- function(data, train = 0.7) {
 ## QDA
 
 ```{r}
-QDA.Model <- function(data, train = 0.7) {
+QDA.Model <- function(data, train = 1, test = 0.5) {
   # Split the data into training and testing sets
   set.seed(123) # for reproducibility
   train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
+  if(train == 1) {
+    test_index = sample(nrow(data), nrow(data) * test)
+    test_data = data[test_index, ]
+    test_label = as.factor(data[test_index, "Default"])
+  }
+  else {
+    test_data <- data[-train_index, ]
+    test_label <- as.factor(data[-train_index,"Default"])
+  }
   
  
   germanQda <- qda(Default ~ . , data.frame(train_data))
@@ -250,15 +264,21 @@ QDA.Model <- function(data, train = 0.7) {
 ## Logistic Regression
 
 ```{r}
-GLM.Model <- function(data, train = 0.7) {
+GLM.Model <- function(data, train = 1, test = 0.5) {
   
   # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
   train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
-  test_data <- data[-train_index, ]
-  test_label <- data[-train_index,"Default"]
-  
+  if(train == 1) {
+    test_index = sample(nrow(data), nrow(data) * test)
+    test_data = data[test_index, ]
+    test_label = as.factor(data[test_index, "Default"])
+  }
+  else {
+    test_data <- data[-train_index, ]
+    test_label <- as.factor(data[-train_index,"Default"])
+  }  
   
   # Train the GLM model using the training data
   glm_model <- glm(Default ~ ., data = train_data, family = binomial(link = "logit"))
@@ -319,15 +339,22 @@ GLM.Model <- function(data, train = 0.7) {
 ```{r}
 
 # This function takes in non PCA like data.
-KNN.Model <- function(data, train = 0.7) {
+KNN.Model <- function(data, train = 1, test = 0.5) {
   
     # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
   train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
+  if(train == 1) {
+    test_index = sample(nrow(data), nrow(data) * test)
+    test_data = data[test_index, ]
+    test_label = as.factor(data[test_index, "Default"])
+  }
+  else {
+    test_data <- data[-train_index, ]
+    test_label <- as.factor(data[-train_index,"Default"])
+  }
   
   # Train the KNN classifier using the training data
   knn_model <- train(
@@ -407,15 +434,22 @@ KNN.Model <- function(data, train = 0.7) {
 ## Naïve Bayes
 
 ```{r}
-NB.Model <- function(data, train = 0.7) {
+NB.Model <- function(data, train = 1, test = 0.5) {
   
   # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
   train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
+  if(train == 1) {
+    test_index = sample(nrow(data), nrow(data) * test)
+    test_data = data[test_index, ]
+    test_label = as.factor(data[test_index, "Default"])
+  }
+  else {
+    test_data <- data[-train_index, ]
+    test_label <- as.factor(data[-train_index,"Default"])
+  }
   
   # Train the Naïve Bayes classifier using the training data
   nb_model <- naive_bayes(train_data, train_label)
