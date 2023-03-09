@@ -757,7 +757,7 @@ comb_result <- rbind(comb_result1,qda_comb_result1,glm_comb_result1,knn_comb_res
 
 rownames(comb_result) <- c("LDA(std)","LDA(balance)","QDA(std)","QDA(balance)", "GLM(std)","GLM(balance)", "KNN(std)","KNN(balance)", "NB(std)","NB(balance)")
 
-knitr::kable(comb_result, "rst",
+knitr::kable(comb_result, "simple",
              caption = "False Positive Rates")
 
 comb_result
