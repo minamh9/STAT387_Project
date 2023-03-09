@@ -1,284 +1,52 @@
 ---
-title: "mina's project"
-author: "Mina Mehdinia"
+title: "Tim's Work"
+author: "Tim Luo"
 date: "2023-03-03"
 output: html_document
 ---
 
-```{r}
-library(dplyr)
-library(MASS)
-library(ggplot2)
-library(ggpubr)
-library(caret)
-library(pROC)
-```
-
-```{r}
-german <- read.csv("germancredit.csv")
-glimpse(german)
-summary(german)
-dim(german)
-
-german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
-summary(german)
-
-```
-
-```{r} 
-
-dummy <- dummyVars(" ~ .", data=german)
-dummy.german <- data.frame(predict(dummy, newdata = german)) 
-
-
-model <- lda(Default ~ ., data = dummy.german)
-predictions <- predict(model, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-
-```
-
-```{r}
-
-set.seed(123) # set random seed for reproducibility
-trainIndex <- createDataPartition(dummy.german$Default, p = 0.7, list = FALSE)
-train <- dummy.german[, ]
-test <- dummy.german[-trainIndex, ]
-
-lda.model <- lda(Default ~ ., data = train)
-predictions <- predict(lda.model, newdata = test)
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-confusionMatrix(predictions$class, test$Default)
-
-```
-# Variance Threshold
-
-```{r}
-variances <- apply(dummy.german[, -1], 2, var)
-
-# Set a variance threshold
-threshold <- 0.1
-
-# Identify predictor variables with variance above threshold
-selected_vars <- names(variances[variances > threshold])
-
-# Fit an LDA model with selected predictor variables
-lda_model_var <- lda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
-
-
-predictions <- predict(lda_model_var, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-
-```
-# QDA
-
-```{r}
-# Restart the dummy german dataset
-dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
-dummy.german <- data.frame(predict(dummy, newdata = german)) 
-# Standardize the data
-dummy.german_std <- scale(dummy.german)
-
-
-# Perform PCA
-german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
-# Extract the statistically significant principal component scores
-pc_scores <- predict(german.pca, dummy.german_std)
-# Split the data into training and testing sets
-set.seed(123) # for reproducibility
-train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
-train_data <- dummy.german_std[train_index, ]
-train_label <- as.factor(dummy.german_std[train_index,"Default"])
-test_data <- dummy.german_std[-train_index, ]
-test_label <- as.factor(dummy.german_std[-train_index,"Default"])
-
-#QDA using PCA
-germanQda <- qda(Default ~ . , data=data.frame(train_data))
-predictions <- predict(germanQda, newdata=data.frame(test_data))
-confusionMatrix(predictions$class, test_label)
-```
-
-```{r}
-#QDA using whole data set
-germanQda <- qda(Default ~ . , dummy.german)
-
-predictions <- predict(germanQda, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-
-```
-
-
-```{r}
-
-variances <- apply(dummy.german[, -1], 2, var)
-threshold <- 0.1
-
-selected_vars <- names(variances[variances > threshold])
-
-qda_model_var <- qda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
-
-
-predictions <- predict(qda_model_var, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-
-
-
-
-```{r}
-german_glm<- glm(Default~., family=binomial, data=dummy.german)
-summary(german_glm)
-```
-we can see that among all predictors 23 of them only are significant. we can use AIC/BIC to choose them. 
-
-# AIC/Backward
-```{r}
-german_glm_back <- step(german_glm)
-```
-
-```{r}
-summary(german_glm_back)
-```
-```{r}
-short_germandata<- data.frame(dummy.german[,c("Default","checkingstatus1.A12","checkingstatus1.A13","checkingstatus1.A14","duration","history.A32",
-"history.A33","history.A34","purpose.A41","purpose.A410","purpose.A42","purpose.A43","purpose.A48","purpose.A49","amount","savings.A64","savings.A65",
-"employ.A74","installment","status.A93","others.A103","age","otherplans.A143","housing.A152","foreign.A202")])
-
-germanlda_short <- lda(Default ~ . , short_germandata)
-
-predictions_short <- predict(germanlda_short, newdata = short_germandata)
-
-short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short$class))
-
-cm <- confusionMatrix(predictions_short$class, short_germandata$Default)
-cm
-roc.curve <- roc(short_germandata$Default, predictions_short$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-```{r}
-germanqda_short <- qda(Default ~ . , short_germandata)
-
-predictions_short2 <- predict(germanqda_short, newdata = short_germandata)
-
-short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short2$class))
-
-cm <- confusionMatrix(predictions_short2$class, short_germandata$Default)
-cm
-roc.curve <- roc(short_germandata$Default, predictions_short2$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-```{r}
-# Split data into training and test sets
-train <- dummy.german[]
-test <- dummy.german[]
-# Fit logistic regression model using training data
-glmmodel <- glm(Default ~ ., data = train, family = binomial)
-summary(glmmodel)
-# Make predictions on test data
-predictions <- ifelse(predict(glmmodel, newdata = test, type = "response") > 0.5, "Up", "Down")
-# confusion matrix
-conf_matrix <- table(predictions, test$Default)
-conf_matrix
-# Calculate overall fraction of correct predictions
-accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
-accuracy
-
-
-```
-
-```{r}
-set.seed(123)
-trainIndex <- sample(nrow(dummy.german), nrow(dummy.german) * 0.7) 
-train02 <- dummy.german[trainIndex, ]
-test02 <- dummy.german[-trainIndex, ]
-
-glmmodel02 <- glm(Default ~ ., data = train02, family = binomial)
-summary(glmmodel02)
-
-predictions02 <- predict(glmmodel02, newdata = test02, type = "response")
-predictions02_class = ifelse(predictions02>= 0.5, 1, 0)
-conf_matrix02 <- table(predictions02_class, test02$Default)
-conf_matrix02
-
-cmconf <- confusionMatrix(factor(predictions02_class, levels = c(0,1)), factor(test02$Default, levels = c(0,1)))
-
-cmconf
-accuracy02 <- sum(diag(conf_matrix02)) / sum(conf_matrix02)
-accuracy02
-```
-
-```{r}
-ldoutput<- LDA.Model(german)
-QDA.Model(german)
-glm_func(german)
-KNN.Model(german)
-
-```
-
-
-
-
-
-#===============================================================================
-#==================================FOR TABLE ===================================
-#===============================================================================
-```{r}
-library(tidyverse)
-library(MASS)        # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
+# SETUP
+```{r setup, include = F}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)   # dplyr, ggplot2, tidyr, tibble, stringr, purrr
+library(MASS)        # LDA, QDA, OLS, Ridge Reg., Box-Cox, stepAIC, etc.
 library(ROCR)        # Precision/Recall/Sens./Spec./ performance plot
 library(class)       # KNN, SOM, LVQ
 library(e1071)       # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
 library(boot)        # LOOCV, Bootstrap
 library(caret)       # Classification/Regression Training
-library(dplyr)       # For piping and mutation methods
-library(ggplot2)     # For plots
 library(randomForest)# for RFE
 library(naivebayes)  # for NB
 library(ROSE)        # for SMOTE
 library(fastDummies) # For Get Dummies
-library(pROC)        # for PCA
+library(pROC)        # display and analyze ROC curves
+# rm(list=ls())
 ```
+
+
 
 ```{r}
-german <- read.csv("germancredit.csv", header=T)
-head(german)[1:7]
-```
+german <- read.csv("germancredit.csv", header=T) |> 
+  rename(checking = checkingstatus1) 
 
+```
 
 ```{r}
 dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
 newgerman <- data.frame(predict(dummy, newdata = german))
 dim(newgerman)
 ```
+
+```{r}
+german.lm = lm(Default ~ ., german)
+
+summary(german.lm)
+```
+
+
+# FUNCTIONS
+
+## RFE
 
 ```{r}
 
@@ -325,6 +93,8 @@ RFE <- function(data, num.features=4) {
 
 ```
 
+## PCA
+
 ```{r}
 
 Get.First.n.PCs <- function(data, n=4) {
@@ -341,12 +111,13 @@ Get.First.n.PCs <- function(data, n=4) {
 
 ```
 
+## LDA
 
 ```{r}
-LDA.Model <- function(data) {
+LDA.Model <- function(data, train = 0.7) {
   # Split the data into training and testing sets
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
   test_data <- data[-train_index, ]
@@ -408,11 +179,13 @@ LDA.Model <- function(data) {
 
 ```
 
+## QDA
+
 ```{r}
-QDA.Model <- function(data) {
+QDA.Model <- function(data, train = 0.7) {
   # Split the data into training and testing sets
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
   test_data <- data[-train_index, ]
@@ -474,12 +247,14 @@ QDA.Model <- function(data) {
 }
 ```
 
+## Logistic Regression
+
 ```{r}
-glm_func <- function(data) {
+GLM.Model <- function(data, train = 0.7) {
   
   # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   test_data <- data[-train_index, ]
   test_label <- data[-train_index,"Default"]
@@ -539,15 +314,16 @@ glm_func <- function(data) {
 
 ```
 
+## KNN
 
 ```{r}
 
 # This function takes in non PCA like data.
-KNN.Model <- function(data) {
+KNN.Model <- function(data, train = 0.7) {
   
     # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
   test_data <- data[-train_index, ]
@@ -628,12 +404,14 @@ KNN.Model <- function(data) {
 
 ```
 
+## Naïve Bayes
+
 ```{r}
-NB.Model <- function(data) {
+NB.Model <- function(data, train = 0.7) {
   
   # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
   test_data <- data[-train_index, ]
@@ -694,6 +472,7 @@ NB.Model <- function(data) {
 }
 ```
 
+# MODELING
 
 ```{r}
 RFE.4.German <- RFE(newgerman)
@@ -785,28 +564,28 @@ qda.pca.result4[]
 ```
 
 ```{r}
-glm.result <- glm_func(RFE.4.German)
+glm.result <- GLM.Model(RFE.4.German)
 glm.result[]
 
-glm.pca.result <- glm_func(pca.four)
+glm.pca.result <- GLM.Model(pca.four)
 glm.pca.result[]
 
-glm.result2 <- glm_func(RFE.10.German)
+glm.result2 <- GLM.Model(RFE.10.German)
 glm.result2[]
 
-glm.pca.result2 <- glm_func(pca.ten)
+glm.pca.result2 <- GLM.Model(pca.ten)
 glm.pca.result2[]
 
-glm.result3 <- glm_func(RFE.4.German.balance)
+glm.result3 <- GLM.Model(RFE.4.German.balance)
 glm.result3[]
 
-glm.pca.result3 <- glm_func(pca.four02)
+glm.pca.result3 <- GLM.Model(pca.four02)
 glm.pca.result3[]
 
-glm.result4 <- glm_func(RFE.10.German.balance)
+glm.result4 <- GLM.Model(RFE.10.German.balance)
 glm.result4[]
 
-glm.pca.result4 <- glm_func(pca.ten02)
+glm.pca.result4 <- GLM.Model(pca.ten02)
 glm.pca.result4[]
 ```
 
@@ -835,6 +614,7 @@ knn.result4[]
 knn.pca.result4 <- KNN.Model(pca.ten02)
 knn.pca.result4[]
 ```
+
 ```{r}
 nb.result <- NB.Model(RFE.4.German)
 nb.result[]
@@ -861,6 +641,7 @@ nb.pca.result4 <- NB.Model(pca.ten02)
 nb.pca.result4[]
 ```
 
+# RESULTS
 
 ```{r}
 comb_result1 <- cbind(RFE_4_feature = result[2],RFE_10_feature= result2[2],PC_5 = pca.result[2], PC_10 = pca.result2[2])
