@@ -41,6 +41,9 @@ dim(newgerman)
 german.lm = lm(Default ~ ., german)
 
 summary(german.lm)
+
+train = 1
+test = 0.5
 ```
 
 
@@ -700,8 +703,12 @@ nb_comb_result2 <- cbind(RFE_4_feature =nb.result3[2],RFE_10_feature=nb.result4[
 
 comb_result <- rbind(comb_result1,qda_comb_result1,glm_comb_result1,knn_comb_result1, nb_comb_result1, comb_result2, qda_comb_result2, glm_comb_result2, knn_comb_result2, nb_comb_result2)
 
+
 rownames(comb_result) <- c("LDA(std)","LDA(balance)","QDA(std)","QDA(balance)", "GLM(std)","GLM(balance)", "KNN(std)","KNN(balance)", "NB(std)","NB(balance)")
-knitr::kable(comb_result, "simple")
+knitr::kable(comb_result, "simple", 
+             caption = paste0("Model Accuracy (MSE) tested on ", 
+                              ifelse(train==1, 100*test, (1-train)*100),
+                              "% of the data"))
 
 ```
 
@@ -731,6 +738,7 @@ comb_result <- rbind(comb_result1,qda_comb_result1,glm_comb_result1,knn_comb_res
 
 rownames(comb_result) <- c("LDA(std)","LDA(balance)","QDA(std)","QDA(balance)", "GLM(std)","GLM(balance)", "KNN(std)","KNN(balance)", "NB(std)","NB(balance)")
 
-knitr::kable(comb_result, "rst")
+knitr::kable(comb_result, "simple",
+             caption = "False Positive Rates")
 
 ```
