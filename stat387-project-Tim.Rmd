@@ -20,13 +20,13 @@ library(naivebayes)  # for NB
 library(ROSE)        # for SMOTE
 library(fastDummies) # For Get Dummies
 library(pROC)        # display and analyze ROC curves
+source("Stat387-Proj-HelperFunctions.R")
 # rm(list=ls())
 ```
 
-
-
 ```{r}
-german <- read.csv("germancredit.csv", header=T) |> 
+german <- read.csv("germancredit.csv", header=T) |>
+  as_tibble() |> 
   rename(checking = checkingstatus1) 
 
 ```
@@ -37,6 +37,8 @@ newgerman <- data.frame(predict(dummy, newdata = german))
 dim(newgerman)
 ```
 
+## Exploratory
+
 ```{r}
 german.lm = lm(Default ~ ., german)
 
@@ -44,6 +46,32 @@ summary(german.lm)
 
 train = 1
 test = 0.5
+```
+
+```{r grouping}
+german.named = german |> 
+  mutate_if(is.character, function(x) name.dict[x])
+
+german.named |> group_by(purpose) |> 
+  summarise(count = n(),
+            default = sum(Default),
+            percent.default = default/count) |> 
+  arrange(percent.default)
+
+
+german.named |> group_by(duration) |> 
+  summarise(count = n(),
+            default = sum(Default),
+            percent.default = default/count) |> 
+  arrange(desc(percent.default)) |> 
+  filter(count > 9)
+
+german.named$duration |> unique() |> sort()
+```
+
+```{r}
+qda_comb_result1
+qda_comb_result2
 ```
 
 
@@ -141,7 +169,7 @@ LDA.Model <- function(data, train = 1, test = 0.5) {
   cm <- confusionMatrix(predictions_short$class, test_label)
   table_cm <- as.table(cm)
   acc <- sum(diag(table_cm)) / sum(table_cm)
-
+  acc
 
   
   # Printing the ROC curve
@@ -217,7 +245,7 @@ QDA.Model <- function(data, train = 1, test = 0.5) {
   cm <- confusionMatrix(predictions$class, test_label)
   table_cm <- as.table(cm)
   acc <- sum(diag(table_cm)) / sum(table_cm)
-
+  
 
   
   # Printing the ROC curve
@@ -509,172 +537,163 @@ NB.Model <- function(data, train = 1, test = 0.5) {
 }
 ```
 
+
 # MODELING
 
-```{r}
-RFE.4.German <- RFE(newgerman)
-```
-
-```{r}
-result <- LDA.Model(RFE.4.German)
-result[]
-```
-
-```{r}
-pca.four <- Get.First.n.PCs(newgerman)
-pca.result <- LDA.Model(pca.four)
-pca.result[]
-```
-
-
-```{r}
-RFE.10.German <- RFE(newgerman, num.features=10)
-```
-```{r}
-result2 <- LDA.Model(RFE.10.German)
-result2[]
-```
-```{r}
-pca.ten <- Get.First.n.PCs(newgerman,10)
-pca.result2 <- LDA.Model(pca.ten)
-pca.result2[]
-```
+## Data Prep
 
 ```{r}
 balanced.dummy.german <- ROSE(Default ~ ., data = newgerman, seed = 123)$data
-```
-```{r}
-RFE.4.German.balance <- RFE(balanced.dummy.german)
-```
 
-```{r}
-result3 <- LDA.Model(RFE.4.German.balance)
-result3[]
-```
-```{r}
-pca.four02 <- Get.First.n.PCs(balanced.dummy.german,4)
-pca.result3 <- LDA.Model(pca.four02)
-pca.result3[]
-```
+RFE.4.standard <- RFE(newgerman)
+RFE.4.balance <- RFE(balanced.dummy.german)
+RFE.10.standard <- RFE(newgerman, num.features=10)
+RFE.10.balance <- RFE(balanced.dummy.german, num.features=10)
 
-```{r}
-RFE.10.German.balance <- RFE(balanced.dummy.german, num.features=10)
+PCA.4.standard <- Get.First.n.PCs(newgerman)
+PCA.4.balance <- Get.First.n.PCs(balanced.dummy.german,4)
+PCA.10.standard <- Get.First.n.PCs(newgerman,10)
+PCA.10.balance <- Get.First.n.PCs(balanced.dummy.german,10)
 
 ```
 
+## LDA
+
 ```{r}
-result4 <- LDA.Model(RFE.10.German.balance)
-result4[]
+lda.result <- LDA.Model(RFE.4.standard)
+lda.result[]
+
+lda.pca.result <- LDA.Model(PCA.4.standard)
+lda.pca.result[]
+
+lda.result2 <- LDA.Model(RFE.10.standard)
+lda.result2[]
+
+lda.pca.result2 <- LDA.Model(PCA.10.standard)
+lda.pca.result2[]
+
+lda.result3 <- LDA.Model(RFE.4.balance)
+lda.result3[]
+
+lda.pca.result3 <- LDA.Model(PCA.4.balance)
+lda.pca.result3[]
+
+lda.result4 <- LDA.Model(RFE.10.balance)
+lda.result4[]
+
+lda.pca.result4 <- LDA.Model(PCA.10.balance)
+lda.pca.result4[]
 ```
-```{r}
-pca.ten02 <- Get.First.n.PCs(balanced.dummy.german,10)
-pca.result4 <- LDA.Model(pca.ten02)
-pca.result4[]
-```
 
-
+## QDA
 
 ```{r}
-qda.result <- QDA.Model(RFE.4.German)
+qda.result <- QDA.Model(RFE.4.standard)
 qda.result[]
 
-qda.pca.result <- QDA.Model(pca.four)
+qda.pca.result <- QDA.Model(PCA.4.standard)
 qda.pca.result[]
 
-qda.result2 <- QDA.Model(RFE.10.German)
+qda.result2 <- QDA.Model(RFE.10.standard)
 qda.result2[]
 
-qda.pca.result2 <- QDA.Model(pca.ten)
+qda.pca.result2 <- QDA.Model(PCA.10.standard)
 qda.pca.result2[]
 
-qda.result3 <- QDA.Model(RFE.4.German.balance)
+qda.result3 <- QDA.Model(RFE.4.balance)
 qda.result3[]
 
-qda.pca.result3 <- QDA.Model(pca.four02)
+qda.pca.result3 <- QDA.Model(PCA.4.balance)
 qda.pca.result3[]
 
-qda.result4 <- QDA.Model(RFE.10.German.balance)
+qda.result4 <- QDA.Model(RFE.10.balance)
 qda.result4[]
 
-qda.pca.result4 <- QDA.Model(pca.ten02)
+qda.pca.result4 <- QDA.Model(PCA.10.balance)
 qda.pca.result4[]
 ```
 
+## Logistic
+
 ```{r}
-glm.result <- GLM.Model(RFE.4.German)
+glm.result <- GLM.Model(RFE.4.standard)
 glm.result[]
 
-glm.pca.result <- GLM.Model(pca.four)
+glm.pca.result <- GLM.Model(PCA.4.standard)
 glm.pca.result[]
 
-glm.result2 <- GLM.Model(RFE.10.German)
+glm.result2 <- GLM.Model(RFE.10.standard)
 glm.result2[]
 
-glm.pca.result2 <- GLM.Model(pca.ten)
+glm.pca.result2 <- GLM.Model(PCA.10.standard)
 glm.pca.result2[]
 
-glm.result3 <- GLM.Model(RFE.4.German.balance)
+glm.result3 <- GLM.Model(RFE.4.balance)
 glm.result3[]
 
-glm.pca.result3 <- GLM.Model(pca.four02)
+glm.pca.result3 <- GLM.Model(PCA.4.balance)
 glm.pca.result3[]
 
-glm.result4 <- GLM.Model(RFE.10.German.balance)
+glm.result4 <- GLM.Model(RFE.10.balance)
 glm.result4[]
 
-glm.pca.result4 <- GLM.Model(pca.ten02)
+glm.pca.result4 <- GLM.Model(PCA.10.balance)
 glm.pca.result4[]
 ```
 
+## KNN
+
 ```{r}
-knn.result <- KNN.Model(RFE.4.German)
+knn.result <- KNN.Model(RFE.4.standard)
 knn.result[]
 
-knn.pca.result <- KNN.Model(pca.four)
+knn.pca.result <- KNN.Model(PCA.4.standard)
 knn.pca.result[]
 
-knn.result2 <- KNN.Model(RFE.10.German)
+knn.result2 <- KNN.Model(RFE.10.standard)
 knn.result2[]
 
-knn.pca.result2 <- KNN.Model(pca.ten)
+knn.pca.result2 <- KNN.Model(PCA.10.standard)
 knn.pca.result2[]
 
-knn.result3 <- KNN.Model(RFE.4.German.balance)
+knn.result3 <- KNN.Model(RFE.4.balance)
 knn.result3[]
 
-knn.pca.result3 <- KNN.Model(pca.four02)
+knn.pca.result3 <- KNN.Model(PCA.4.balance)
 knn.pca.result3[]
 
-knn.result4 <- KNN.Model(RFE.10.German.balance)
+knn.result4 <- KNN.Model(RFE.10.balance)
 knn.result4[]
 
-knn.pca.result4 <- KNN.Model(pca.ten02)
+knn.pca.result4 <- KNN.Model(PCA.10.balance)
 knn.pca.result4[]
 ```
 
+## Naïve Bayes
+
 ```{r}
-nb.result <- NB.Model(RFE.4.German)
+nb.result <- NB.Model(RFE.4.standard)
 nb.result[]
 
-nb.pca.result <- NB.Model(pca.four)
+nb.pca.result <- NB.Model(PCA.4.standard)
 nb.pca.result[]
 
-nb.result2 <- NB.Model(RFE.10.German)
+nb.result2 <- NB.Model(RFE.10.standard)
 nb.result2[]
 
-nb.pca.result2 <- NB.Model(pca.ten)
+nb.pca.result2 <- NB.Model(PCA.10.standard)
 nb.pca.result2[]
 
-nb.result3 <- NB.Model(RFE.4.German.balance)
+nb.result3 <- NB.Model(RFE.4.balance)
 nb.result3[]
 
-nb.pca.result3 <- NB.Model(pca.four02)
+nb.pca.result3 <- NB.Model(PCA.4.balance)
 nb.pca.result3[]
 
-nb.result4 <- NB.Model(RFE.10.German.balance)
+nb.result4 <- NB.Model(RFE.10.balance)
 nb.result4[]
 
-nb.pca.result4 <- NB.Model(pca.ten02)
+nb.pca.result4 <- NB.Model(PCA.10.balance)
 nb.pca.result4[]
 ```
 
@@ -738,7 +757,9 @@ comb_result <- rbind(comb_result1,qda_comb_result1,glm_comb_result1,knn_comb_res
 
 rownames(comb_result) <- c("LDA(std)","LDA(balance)","QDA(std)","QDA(balance)", "GLM(std)","GLM(balance)", "KNN(std)","KNN(balance)", "NB(std)","NB(balance)")
 
-knitr::kable(comb_result, "simple",
+knitr::kable(comb_result, "rst",
              caption = "False Positive Rates")
 
+comb_result
+qda_comb_result1
 ```
