@@ -352,7 +352,7 @@ KNN.Model <- function(data, train = 0.7) {
   print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
   
   return(false_positives_percent)
-}
+} 
 
 #===============================================================================
 #======================================= LDA ===================================
@@ -563,7 +563,135 @@ QDA.Model <- function(data, train = 0.7) {
   return(false_positives_percent)
 }
 
+#===============================================================================
+#======================================= DICT ==================================
+#===============================================================================
 
+# Example: dict["A12"] -> "0 to 200 DM"
+colname.dict = c(
+  "A11" = "Less than 0 DM",
+   "A12" = "0 to 200 DM",
+   "A13" = "More than 200 DM",
+   "A14" = "No checking account",
+   "A30" = "No credit taken or all credit paid back",
+   "A31" = "All credits at this bank paid back",
+   "A32" = "Existing credits bac back until now",
+   "A33" = "Delay in paying off credit in the past",
+   "A34" = "Critical account or other credits existing",
+   "A40" = "Car (new)",
+   "A41" = "Car (used)",
+   "A42" = "Furniture/equipment",
+   "A43" = "Radio/television",
+   "A44" = "Domestic appliances",
+   "A45" = "Repairs",
+   "A46" = "Ecuation",
+   "A47" = "Vacation",
+   "A48" = "Retraining",
+   "A49" = "Business",
+   "A410" = "Other",
+   "A61" = "Less than 100 DM",
+   "A62" = "100 to 500 DM",
+   "A63" = "500 to 1,000 DM",
+   "A64" = "More than 1,000 DM",
+   "A65" = "Unknown/no savings account",
+   "A71" = "Unemployed",
+   "A72" = "Less than 1 year",
+   "A73" = "1 to 4 years",
+   "A74" = "4 to 7 years",
+   "A75" = "More than 7 years",
+   "A91" = "Male (divorced/separated)",
+   "A92" = "Female (divorced/separated/married)",
+   "A93" = "Male (single)",
+   "A94" = "Male (married/widowed)",
+   "A95" = "Female (single)",
+   "A96" = "Male (divorced/separated/married)",
+   "A101" = "None",
+   "A102" = "Co-applicant",
+   "A103" = "Guarantor",
+   "A121" = "Real estate",
+   "A122" = "Building society savings agreement/life insurance",
+   "A123" = "Car or other",
+   "A124" = "Unknown/no property",
+   "A141" = "Bank",
+   "A142" = "Stores",
+   "A143" = "None",
+   "A151" = "Rent",
+   "A152" = "Own",
+   "A153" = "Free",
+   "A171" = "Unemployed/unskilled (non-resident)",
+   "A172" = "Unemployed/unskilled (resident)",
+   "A173" = "Skilled employee/official",
+   "A174" = "Management/self-employed/highly qualified employee/officer",
+   "A191" = "None",
+   "A192" = "Yes (registered uner the customer's name)",
+   "A201" = "Yes",
+   "A202" = "No"
+)
+
+
+
+
+#===============================================================================
+#======================================= GLM ===================================
+#===============================================================================
+glm_func <- function(data) {
+  
+  # Split the data into training and testing sets on PCA
+  set.seed(123) # for reproducibility
+  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
+  train_data <- data[train_index, ]
+  test_data <- data[-train_index, ]
+  test_label <- data[-train_index,"Default"]
+  
+  
+  # Train the GLM model using the training data
+  glm_model <- glm(Default ~ ., data = train_data, family = binomial(link = "logit"))
+  
+  # Evaluate the model performance on the test set
+  glm_pred <- predict(glm_model, newdata = test_data, type = "response")
+  glm_pred <- ifelse(glm_pred >= 0.5, 1, 0)
+  
+  glmConf <- confusionMatrix(factor(glm_pred, levels = c(0,1)), factor(test_data$Default, levels = c(0,1)))
+  
+  # Get predictions
+  pred_obj <- prediction(glm_pred,test_label)
+  
+  # Plot ROC Curve
+  perf <- performance(pred_obj, measure = "tpr", x.measure = "fpr")
+  plot(perf, main = "ROC Curve", col = "blue", lwd = 2, legacy.axes = TRUE)
+  abline(a = 0, b = 1, lty = 2, col = "red")
+  
+  glmPredictiction <- prediction(as.numeric(glm_pred), as.numeric(test_label))
+  glmPerf <- performance(glmPredictiction, measure = "tpr", x.measure = "fpr")
+  glmAUC <- performance(glmPredictiction, measure = "auc")
+  
+  print(plot(glmPerf))
+  
+  # Extract performance metrics
+  sensitivity <- slot(glmPerf, "y.values")[[1]]
+  specificity <- 1 - slot(glmPerf, "x.values")[[1]]
+  auc <- slot(glmAUC, "y.values")
+  glmError <- mean(as.numeric(glm_pred) !=as.numeric(test_label))
+  
+  # Print performance metrics
+  print(glmConf)
+  print(paste0("Sensitivity: ", sensitivity))
+  print(paste0("Specificity: ", specificity))
+  print(paste0("AUC: ", auc))
+  print(paste0("Error rate:", glmError))
+  
+  # Calculate false positives
+  false_positives <- sum(as.numeric(glm_pred) == 1 & as.numeric(test_label) == 0)
+  
+  # Calculate false positives as a percentage
+  total_negatives <- sum(as.numeric(test_label) == 0)
+  false_positives_percent <- false_positives / total_negatives * 100
+  
+  # Print the false positives percentage
+  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
+  
+  return(false_positives_percent)
+}
 
 
 
