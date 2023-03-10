@@ -5,253 +5,8 @@ date: "2023-03-03"
 output: html_document
 ---
 
-```{r}
-library(dplyr)
-library(MASS)
-library(ggplot2)
-library(ggpubr)
-library(caret)
-library(pROC)
-```
-
-```{r}
-german <- read.csv("germancredit.csv")
-glimpse(german)
-summary(german)
-dim(german)
-
-german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
-summary(german)
-
-```
-
-```{r} 
-
-dummy <- dummyVars(" ~ .", data=german)
-dummy.german <- data.frame(predict(dummy, newdata = german)) 
-
-
-model <- lda(Default ~ ., data = dummy.german)
-predictions <- predict(model, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-
-```
-
-```{r}
-
-set.seed(123) # set random seed for reproducibility
-trainIndex <- createDataPartition(dummy.german$Default, p = 0.7, list = FALSE)
-train <- dummy.german[, ]
-test <- dummy.german[-trainIndex, ]
-
-lda.model <- lda(Default ~ ., data = train)
-predictions <- predict(lda.model, newdata = test)
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-confusionMatrix(predictions$class, test$Default)
-
-```
-# Variance Threshold
-
-```{r}
-variances <- apply(dummy.german[, -1], 2, var)
-
-# Set a variance threshold
-threshold <- 0.1
-
-# Identify predictor variables with variance above threshold
-selected_vars <- names(variances[variances > threshold])
-
-# Fit an LDA model with selected predictor variables
-lda_model_var <- lda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
-
-
-predictions <- predict(lda_model_var, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-
-```
-# QDA
-
-```{r}
-# Restart the dummy german dataset
-dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
-dummy.german <- data.frame(predict(dummy, newdata = german)) 
-# Standardize the data
-dummy.german_std <- scale(dummy.german)
-
-
-# Perform PCA
-german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
-# Extract the statistically significant principal component scores
-pc_scores <- predict(german.pca, dummy.german_std)
-# Split the data into training and testing sets
-set.seed(123) # for reproducibility
-train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
-train_data <- dummy.german_std[train_index, ]
-train_label <- as.factor(dummy.german_std[train_index,"Default"])
-test_data <- dummy.german_std[-train_index, ]
-test_label <- as.factor(dummy.german_std[-train_index,"Default"])
-
-#QDA using PCA
-germanQda <- qda(Default ~ . , data=data.frame(train_data))
-predictions <- predict(germanQda, newdata=data.frame(test_data))
-confusionMatrix(predictions$class, test_label)
-```
-
-```{r}
-#QDA using whole data set
-germanQda <- qda(Default ~ . , dummy.german)
-
-predictions <- predict(germanQda, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-
-```
-
-
-```{r}
-
-variances <- apply(dummy.german[, -1], 2, var)
-threshold <- 0.1
-
-selected_vars <- names(variances[variances > threshold])
-
-qda_model_var <- qda(Default ~ ., data = dummy.german[, c(selected_vars, "Default")])
-
-
-predictions <- predict(qda_model_var, newdata = dummy.german)
-
-dummy.german$Default <- factor(dummy.german$Default, levels = levels(predictions$class))
-
-cm <- confusionMatrix(predictions$class, dummy.german$Default)
-cm
-roc.curve <- roc(dummy.german$Default, predictions$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-
-
-
-
-```{r}
-german_glm<- glm(Default~., family=binomial, data=dummy.german)
-summary(german_glm)
-```
-we can see that among all predictors 23 of them only are significant. we can use AIC/BIC to choose them. 
-
-# AIC/Backward
-```{r}
-german_glm_back <- step(german_glm)
-```
-
-```{r}
-summary(german_glm_back)
-```
-```{r}
-short_germandata<- data.frame(dummy.german[,c("Default","checkingstatus1.A12","checkingstatus1.A13","checkingstatus1.A14","duration","history.A32",
-"history.A33","history.A34","purpose.A41","purpose.A410","purpose.A42","purpose.A43","purpose.A48","purpose.A49","amount","savings.A64","savings.A65",
-"employ.A74","installment","status.A93","others.A103","age","otherplans.A143","housing.A152","foreign.A202")])
-
-germanlda_short <- lda(Default ~ . , short_germandata)
-
-predictions_short <- predict(germanlda_short, newdata = short_germandata)
-
-short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short$class))
-
-cm <- confusionMatrix(predictions_short$class, short_germandata$Default)
-cm
-roc.curve <- roc(short_germandata$Default, predictions_short$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-```{r}
-germanqda_short <- qda(Default ~ . , short_germandata)
-
-predictions_short2 <- predict(germanqda_short, newdata = short_germandata)
-
-short_germandata$Default <- factor(short_germandata$Default, levels = levels(predictions_short2$class))
-
-cm <- confusionMatrix(predictions_short2$class, short_germandata$Default)
-cm
-roc.curve <- roc(short_germandata$Default, predictions_short2$posterior[,2])
-plot(roc.curve)
-roc.curve$auc
-```
-```{r}
-# Split data into training and test sets
-train <- dummy.german[]
-test <- dummy.german[]
-# Fit logistic regression model using training data
-glmmodel <- glm(Default ~ ., data = train, family = binomial)
-summary(glmmodel)
-# Make predictions on test data
-predictions <- ifelse(predict(glmmodel, newdata = test, type = "response") > 0.5, "Up", "Down")
-# confusion matrix
-conf_matrix <- table(predictions, test$Default)
-conf_matrix
-# Calculate overall fraction of correct predictions
-accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
-accuracy
-
-
-```
-
-```{r}
-set.seed(123)
-trainIndex <- sample(nrow(dummy.german), nrow(dummy.german) * 0.7) 
-train02 <- dummy.german[trainIndex, ]
-test02 <- dummy.german[-trainIndex, ]
-
-glmmodel02 <- glm(Default ~ ., data = train02, family = binomial)
-summary(glmmodel02)
-
-predictions02 <- predict(glmmodel02, newdata = test02, type = "response")
-predictions02_class = ifelse(predictions02>= 0.5, 1, 0)
-conf_matrix02 <- table(predictions02_class, test02$Default)
-conf_matrix02
-
-cmconf <- confusionMatrix(factor(predictions02_class, levels = c(0,1)), factor(test02$Default, levels = c(0,1)))
-
-cmconf
-accuracy02 <- sum(diag(conf_matrix02)) / sum(conf_matrix02)
-accuracy02
-```
-
-```{r}
-ldoutput<- LDA.Model(german)
-QDA.Model(german)
-glm_func(german)
-KNN.Model(german)
-
-```
-
-
-
-
-
-#===============================================================================
-#==================================FOR TABLE ===================================
-#===============================================================================
-```{r}
+```{r setup, include = F}
+knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(MASS)        # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
 library(ROCR)        # Precision/Recall/Sens./Spec./ performance plot
@@ -269,651 +24,251 @@ library(pROC)        # for PCA
 ```
 
 ```{r}
+#LDA
 german <- read.csv("germancredit.csv", header=T)
-head(german)[1:7]
-```
+
+german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
+
+german$Default = as.factor(german$Default)
+
+train_index = sample(nrow(german), nrow(german) * 0.5) # 50% for training
+
+set.seed(123) # for reproducibility
+train_data =german[]
+test_data = german[-train_index, ]
+test_Y = test_data$Default
+  
+results.matrix = matrix(0, nrow = 5, ncol = 4)
 
 
-```{r}
-dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
-newgerman <- data.frame(predict(dummy, newdata = german))
-dim(newgerman)
-```
-```{r}
+lda.fit = lda(Default~. , data = train_data)
 
-RFE <- function(data, num.features=4) {
-  
-  # Define the predictor and response variables
-  train.X <- data[, !(names(data) %in% c("Default"))]
-  train.Y <- as.factor(data[, "Default"])
-  
-  # Define the control parameters for feature selection
-  ctrl <- rfeControl(functions = rfFuncs,
-                     method = "cv",
-                     number = 10)
-  
-  # Perform recursive feature elimination using the random forest algorithm
-  rf_rfe <- rfe(train.X, train.Y, sizes = c(1:num.features), rfeControl = ctrl)
-  
-  # Print the results
-  print(rf_rfe)
-  
-  # Plot the results
-  p <- plot(rf_rfe, type = c("g", "o"))
-  print(p)
-  
-  # Get the features
-  features <- row.names(varImp(rf_rfe))[1:num.features]
-  
-  varimp_data <- data.frame(feature = features,
-                            importance = varImp(rf_rfe)[1:num.features, 1])
-  
-  # Plots the variable importances
-  gg <- ggplot(data = varimp_data, 
-               aes(x = reorder(feature, -importance), y = importance, fill = feature)) +
-    geom_bar(stat="identity") + labs(x = "Features", y = "Variable Importance") + 
-    geom_text(aes(label = round(importance, 2)), vjust=1.6, color="white", size=4) + 
-    theme_bw() + theme(legend.position = "none") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-  
-  print(gg)
-  
-  target.features <- c("Default", features)
-  
-  return(subset(data, select=target.features))
-}
+#plot(lda.fit)
+lda.pred = predict(lda.fit, test_data)
+names(lda.pred)
+lda.class = lda.pred$class
 
-```
-```{r}
-
-Get.First.n.PCs <- function(data, n=4) {
-  # Extract the first four principal components
-  first_n_pcs <- data$x[, 1:n]
-  
-  # Create a new PCA results object with only the first four principal components
-  german.pca.first.n <- data
-  german.pca.first.n$x <- first_n_pcs
-  german.pca.first.n$rotation <- data$rotation[, 1:n, drop = FALSE]
-  
-  return(german.pca.first.n)
-}
-
-```
+table(lda.class, test_Y)
+table(test_Y, lda.class)
 
 
-```{r}
-LDA.Model <- function(data) {
-  # Split the data into training and testing sets
-  set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
-  train_data <- data[train_index, ]
-  train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
-  
-  # Run LDA and predictions
-  germanlda_short <- lda(Default ~ . , data.frame(train_data))
-  predictions_short <- predict(germanlda_short, newdata = data.frame(test_data))
-  
-  # Printing the confusion matrix
-  cm <- confusionMatrix(predictions_short$class, test_label)
-  table_cm <- as.table(cm)
-  acc <- sum(diag(table_cm)) / sum(table_cm)
+sum(lda.pred$posterior[,1] >= 0.5) 
+sum(lda.pred$posterior[,1] < 0.5)  
 
 
+
+lda.tn = sum((test_Y == unique(test_Y)[1])&(lda.class == unique(test_Y)[1]))
+lda.tp = sum((test_Y == unique(test_Y)[2])&(lda.class == unique(test_Y)[2]))
+
+lda.fp = sum((test_Y == unique(test_Y)[1])&(lda.class == unique(test_Y)[2]))
+lda.fn = sum((test_Y == unique(test_Y)[2])&(lda.class == unique(test_Y)[1]))
+
+lda.n = lda.tn + lda.fp
+lda.p = lda.fn + lda.tp
   
-  # Printing the ROC curve
-  roc.curve <- roc(test_label, predictions_short$posterior[,2])
-  print(plot(roc.curve))
-  print(roc.curve$auc)
   
-  ldaPredictiction <- prediction(
-    as.numeric(predictions_short$class),
-    as.numeric(test_label)
-  )
-  
-  ldaPerf <- performance(ldaPredictiction, measure = "tpr", x.measure = "fpr")
-  ldaAUC <- performance(ldaPredictiction, measure = "auc")
-  
-  print(plot(ldaPerf))
-  
-  # Report the model performance metrics for the optimal K
-  # Extract performance metrics
-  specificity <- slot(ldaPerf, "y.values")[[1]]
-  sensitivity <- 1 - slot(ldaPerf, "x.values")[[1]]
-  auc <- slot(ldaAUC, "y.values")
-  
-  ldaError <- mean(as.numeric(predictions_short$class) !=as.numeric(test_label))
-  
-  # Print performance metrics
-  print(cm)
-  print(paste0("AUC: ", auc))
-  print(paste0("Error rate:", ldaError))
-  print(paste0("specificity: ",specificity))
-  print(paste0("sensitivity: ",sensitivity))
-  
-  # Calculate false positives
-  false_positives <- sum(as.numeric(predictions_short$class) == 2 & as.numeric(test_label) == 1)
-  
-  # Calculate false positives as a percentage
-  total_negatives <- sum(as.numeric(test_label) == 1)
-  false_positives_percent <- false_positives / total_negatives * 100
-  
-  # Print the false positives percentage
-  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
-  
-  return(list(false_positives_percent,round(acc,2)))
-}
+
+# Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
+
+spec.lda  = 1 - (lda.fp/lda.n)
+sen.lda   = lda.tp/lda.p
+oer.lda1  = (lda.fn + lda.fp)/(lda.n + lda.p)
+#oer.lda2  = 1 - mean(lda.class == Direction.2005)
+
+
+
+# ROCR #
+
+lda.pred <- prediction(lda.pred$posterior[,2], test_data$Default) 
+lda.perf <- performance(lda.pred,"tpr","fpr")
+plot(lda.perf,colorize=TRUE, lwd = 2)
+abline(a = 0, b = 1) 
+
+
+lda.auc = performance(lda.pred, measure = "auc")
+#print(lda.auc@y.values)
+
+colnames(results.matrix) = c("SPEC", "SENS", "OER", "AUC")
+rownames(results.matrix) = c("LDA", "QDA", "NAIVE-B", "KNN", "LOG")
+results.matrix[1,] = as.numeric( c(spec.lda, sen.lda, oer.lda1, lda.auc@y.values))
+results.matrix
 
 ```
-
 ```{r}
-QDA.Model <- function(data) {
-  # Split the data into training and testing sets
-  set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
-  train_data <- data[train_index, ]
-  train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
-  
- 
-  germanQda <- qda(Default ~ . , data.frame(train_data))
-  predictions <- predict(germanQda, newdata =  data.frame(test_data))
-  train_data$Default <- factor(train_data$Default, levels = levels(predictions$class))
-  
-  # Printing the confusion matrix
-  cm <- confusionMatrix(predictions$class, test_label)
-  table_cm <- as.table(cm)
-  acc <- sum(diag(table_cm)) / sum(table_cm)
+#QDA
+qda.fit = qda(Default~. , data = train_data)
 
 
-  
-  # Printing the ROC curve
-  roc.curve <- roc(test_label, predictions$posterior[,2])
-  print(plot(roc.curve))
-  print(roc.curve$auc)
-  
-  qdaPredictiction <- prediction(
-    as.numeric(predictions$class),
-    as.numeric(test_label)
-  )
-  
-  qdaPerf <- performance(qdaPredictiction, measure = "tpr", x.measure = "fpr")
-  qdaAUC <- performance(qdaPredictiction, measure = "auc")
-  
-  print(plot(qdaPerf))
-  
-  # Report the model performance metrics for the optimal K
-  # Extract performance metrics
-  specificity <- slot(qdaPerf, "y.values")[[1]]
-  sensitivity <- 1 - slot(qdaPerf, "x.values")[[1]]
-  auc <- slot(qdaAUC, "y.values")
-  
-  qdaError <- mean(as.numeric(predictions$class) !=as.numeric(test_label))
-  
-  # Print performance metrics
-  print(cm)
-  print(paste0("AUC: ", auc))
-  print(paste0("Error rate:", qdaError))
-  print(paste0("specificity: ",specificity))
-  print(paste0("sensitivity: ",sensitivity))
-  
-  # Calculate false positives
-  false_positives <- sum(as.numeric(predictions$class) == 2 & as.numeric(test_label) == 1)
-  
-  # Calculate false positives as a percentage
-  total_negatives <- sum(as.numeric(test_label) == 1)
-  false_positives_percent <- false_positives / total_negatives * 100
-  
-  # Print the false positives percentage
-  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
-  
-  return(list(false_positives_percent,round(acc,2)))
-}
+qda.pred  = predict(qda.fit,  test_data)
+qda.class = qda.pred$class
+
+table(qda.class, test_Y)
+
+
+qda.tn = sum((test_Y == unique(test_Y)[1])&(qda.class == unique(test_Y)[1]))
+qda.tp = sum((test_Y == unique(test_Y)[2])&(qda.class == unique(test_Y)[2]))
+
+qda.fp = sum((test_Y == unique(test_Y)[1])&(qda.class == unique(test_Y)[2]))
+qda.fn = sum((test_Y == unique(test_Y)[2])&(qda.class == unique(test_Y)[1]))
+
+qda.n = qda.tn + qda.fp
+qda.p = qda.fn + qda.tp
+
+
+
+# Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
+spec.qda  = 1 - (qda.fp/qda.n)
+sen.qda   = qda.tp/qda.p
+oer.qda1  = (qda.fn + qda.fp)/(qda.n + qda.p)
+#oer.qda2  = 1 - mean(qda.class == Direction.2005)
+
+
+
+# ROCR #
+qda.pred <- prediction(qda.pred$posterior[,2], test_data$Default) 
+qda.perf <- performance(qda.pred,"tpr","fpr")
+plot(qda.perf,colorize=TRUE, lwd = 2)
+abline(a = 0, b = 1) 
+
+
+qda.auc = performance(qda.pred, measure = "auc")
+print(qda.auc@y.values)
+
+
+results.matrix[2,] = as.numeric( c(spec.qda, sen.qda, oer.qda1, qda.auc@y.values))
+results.matrix
+```
+```{r}
+nb.fit = naiveBayes(Default~. , data = train_data)
+
+nb.class = predict(nb.fit , test_data)
+table(nb.class, test_Y)
+
+mean(nb.class == test_Y)
+
+
+nb.tn = sum((test_Y == unique(test_Y)[1])&(nb.class == unique(test_Y)[1]))
+nb.tp = sum((test_Y == unique(test_Y)[2])&(nb.class == unique(test_Y)[2]))
+
+nb.fp = sum((test_Y == unique(test_Y)[1])&(nb.class == unique(test_Y)[2]))
+nb.fn = sum((test_Y == unique(test_Y)[2])&(nb.class == unique(test_Y)[1]))
+
+nb.n = nb.tn + nb.fp
+nb.p = nb.fn + nb.tp
+
+
+
+
+# Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
+spec.nb  = 1 - (nb.fp/nb.n)
+sen.nb   = nb.tp/nb.p
+oer.nb1  = (nb.fn + nb.fp)/(nb.n + nb.p)
+#oer.nb2  = 1 - mean(nb.class == Direction.2005)
+
+
+# ROCR #
+nb.pred = predict(nb.fit , test_data, type = "raw")
+nb.pred <- prediction(nb.pred[,2], test_data$Default) 
+nb.perf <- performance(nb.pred,"tpr","fpr")
+plot(nb.perf,colorize=TRUE, lwd = 2)
+abline(a = 0, b = 1) 
+
+
+nb.auc = performance(nb.pred, measure = "auc")
+#print(nb.auc@y.values)
+
+
+results.matrix[3,] = as.numeric( c(spec.nb, sen.nb, oer.nb1, nb.auc@y.values))
+
+results.matrix
+```
+```{r}
+train_data.x = cbind(train_data[,-1])
+test_data.x = cbind(test_data[,-1])
+train_Y = train_data$Default
+
+set.seed (1)
+knn.pred = knn(train_data.x, test_data.x, train_Y , k = 10, prob = T)
+table(knn.pred , test_Y)
+
+
+knn.tn = sum((test_Y == unique(test_Y)[1])&(knn.pred == unique(test_Y)[1]))
+knn.tp = sum((test_Y == unique(test_Y)[2])&(knn.pred == unique(test_Y)[2]))
+
+knn.fp = sum((test_Y == unique(test_Y)[1])&(knn.pred == unique(test_Y)[2]))
+knn.fn = sum((test_Y == unique(test_Y)[2])&(knn.pred == unique(test_Y)[1]))
+
+knn.n = knn.tn + knn.fp
+knn.p = knn.fn + knn.tp
+
+
+
+# Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
+spec.knn  = 1 - (knn.fp/knn.n)
+sen.knn   = knn.tp/knn.p
+oer.knn1  = (knn.fn + knn.fp)/(knn.n + knn.p)
+#oer.knn2  = 1 - mean(knn.pred == Direction.2005)
+
+
+
+# ROCR #
+knn.pred <- prediction(attributes(knn.pred)$prob,test_data$Default) 
+knn.perf <- performance(knn.pred, "tpr", "fpr")
+plot(knn.perf, colorize = TRUE, lwd = 2)
+abline(a = 0, b = 1) 
+
+
+knn.auc = performance(knn.pred, measure = "auc")
+#print(knn.auc@y.values)
+
+
+results.matrix[4,] = as.numeric( c(spec.knn, sen.knn, oer.knn1, knn.auc@y.values))
 ```
 
 ```{r}
-glm_func <- function(data) {
+log.reg = glm(Default~. , data = train_data, family = binomial(link = "logit"))
+
+#summary(log.reg)
+
+log.pred = predict(log.reg, test_data, type = "response")
+
+
+#contrasts(test_Y)
+
+log.pred <- ifelse(log.pred >= 0.5, 1, 0)
   
-  # Split the data into training and testing sets on PCA
-  set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
-  train_data <- data[train_index, ]
-  test_data <- data[-train_index, ]
-  test_label <- data[-train_index,"Default"]
-  
-  
-  # Train the GLM model using the training data
-  glm_model <- glm(Default ~ ., data = train_data, family = binomial(link = "logit"))
-  
-  # Evaluate the model performance on the test set
-  glm_pred <- predict(glm_model, newdata = test_data, type = "response")
-  glm_pred <- ifelse(glm_pred >= 0.5, 1, 0)
-  
-  glmConf <- confusionMatrix(factor(glm_pred, levels = c(0,1)), factor(test_data$Default, levels = c(0,1)))
-  table_cm <- as.table(glmConf)
-  acc <- sum(diag(table_cm)) / sum(table_cm)
-  
-  # Get predictions
-  pred_obj <- prediction(glm_pred,test_label)
-  
-  # Plot ROC Curve
-  perf <- performance(pred_obj, measure = "tpr", x.measure = "fpr")
-  plot(perf, main = "ROC Curve", col = "blue", lwd = 2, legacy.axes = TRUE)
-  abline(a = 0, b = 1, lty = 2, col = "red")
-  
-  glmPredictiction <- prediction(as.numeric(glm_pred), as.numeric(test_label))
-  glmPerf <- performance(glmPredictiction, measure = "tpr", x.measure = "fpr")
-  glmAUC <- performance(glmPredictiction, measure = "auc")
-  
-  print(plot(glmPerf))
-  
-  # Extract performance metrics
-  sensitivity <- slot(glmPerf, "y.values")[[1]]
-  specificity <- 1 - slot(glmPerf, "x.values")[[1]]
-  auc <- slot(glmAUC, "y.values")
-  glmError <- mean(as.numeric(glm_pred) !=as.numeric(test_label))
-  
-  # Print performance metrics
-  print(glmConf)
-  print(paste0("Sensitivity: ", sensitivity))
-  print(paste0("Specificity: ", specificity))
-  print(paste0("AUC: ", auc))
-  print(paste0("Error rate:", glmError))
-  
-  # Calculate false positives
-  false_positives <- sum(as.numeric(glm_pred) == 1 & as.numeric(test_label) == 0)
-  
-  # Calculate false positives as a percentage
-  total_negatives <- sum(as.numeric(test_label) == 0)
-  false_positives_percent <- false_positives / total_negatives * 100
-  
-  # Print the false positives percentage
-  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
-  
-  return(list(false_positives_percent, round(acc,2)))
-}
 
+table(log.pred, test_Y)
 
-```
 
+log.tn = sum((test_Y == unique(test_Y)[1])&(log.pred == unique(test_Y)[1]))
+log.tp = sum((test_Y == unique(test_Y)[2])&(log.pred == unique(test_Y)[2]))
 
-```{r}
+log.fp = sum((test_Y == unique(test_Y)[1])&(log.pred == unique(test_Y)[2]))
+log.fn = sum((test_Y == unique(test_Y)[2])&(log.pred == unique(test_Y)[1]))
 
-# This function takes in non PCA like data.
-KNN.Model <- function(data) {
-  
-    # Split the data into training and testing sets on PCA
-  set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
-  train_data <- data[train_index, ]
-  train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
-  
-  # Train the KNN classifier using the training data
-  knn_model <- train(
-    x = train_data,
-    y = train_label,
-    method = "knn",
-    trControl = trainControl(method = "cv", number = 10),
-    tuneGrid = data.frame(k = 1:30)
-  )
-  
-  # Get predictions
-  pred <- predict(knn_model, newdata = test_data, type = "prob")
-  pred_obj <- prediction(pred[,2], test_label)
-  
-  # Evaluate the model performance on the test set for each value of K
-  knnPred <- predict(knn_model, newdata=test_data)
-  knnConf <- confusionMatrix(knnPred, test_label)
-  table_cm <- as.table(knnConf)
-  acc <- sum(diag(table_cm)) / sum(table_cm)
-  
-  # Plot ROC Curve
-  perf <- performance(pred_obj, measure = "tpr", x.measure = "fpr")
-  plot(perf, main = "ROC Curve", col = "blue", lwd = 2, legacy.axes = TRUE)
-  abline(a = 0, b = 1, lty = 2, col = "red")
-  
-  # Choose the K that gives the lowest test error rate
-  kOpt <- knn_model$bestTune$k
-  
-  # Plot the tuning parameter performance
-  gg <- ggplot(knn_model$results, aes(x=k, y=Accuracy)) +
-    geom_line() +
-    geom_point(size = 3) +
-    geom_vline(xintercept=kOpt, color="red", linetype="dashed") +
-    labs(title="Tuning Parameter Performance",
-         x="K",
-         y="Accuracy") +
-    theme_minimal()
-  
-  print(gg)
-  
-  knnPredictiction <- prediction(as.numeric(knnPred), as.numeric(test_label))
-  knnPerf <- performance(knnPredictiction, measure = "tpr", x.measure = "fpr")
-  knnAUC <- performance(knnPredictiction, measure = "auc")
-  
-  print(plot(knnPerf))
-  
-  # Report the model performance metrics for the optimal K
-  # Extract performance metrics
-  sensitivity <- slot(knnPerf, "y.values")[[1]]
-  specificity <- 1 - slot(knnPerf, "x.values")[[1]]
-  auc <- slot(knnAUC, "y.values")
-  knnError <- mean(as.numeric(knnPred) !=as.numeric(test_label))
-  
-  # Print performance metrics
-  print(knnConf)
-  print(paste0("Sensitivity: ", sensitivity))
-  print(paste0("Specificity: ", specificity))
-  print(paste0("AUC: ", auc))
-  print(paste0("Optimal K:", kOpt))
-  print(paste0("Error rate:", knnError))
-  
-  # Calculate false positives
-  false_positives <- sum(as.numeric(knnPred) == 2 & as.numeric(test_label) == 1)
-  
-  # Calculate false positives as a percentage
-  total_negatives <- sum(as.numeric(test_label) == 1)
-  false_positives_percent <- false_positives / total_negatives * 100
-  
-  # Print the false positives percentage
-  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
-  
-  return(list(false_positives_percent, round(acc,2)))
-}
+log.n = log.tn + log.fp
+log.p = log.fn + log.tp
 
-```
 
-```{r}
-NB.Model <- function(data) {
-  
-  # Split the data into training and testing sets on PCA
-  set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
-  train_data <- data[train_index, ]
-  train_label <- as.factor(data[train_index,"Default"])
-  test_data <- data[-train_index, ]
-  test_label <- as.factor(data[-train_index,"Default"])
-  
-  # Train the Naïve Bayes classifier using the training data
-  nb_model <- naive_bayes(train_data, train_label)
-  
-  # # Evaluate the model performance on the test set
-  nb_pred <- predict(nb_model, newdata=test_data)
-  nbConf <- confusionMatrix(nb_pred, test_label)
-  
-  # Get predictions
-  pred <- predict(nb_model, newdata = test_data, type = "prob")
-  pred_obj <- prediction(pred[,2], test_label)
-  
-  # Evaluate the model performance on the test set for each value of K
-  nbPred <- predict(nb_model, newdata=test_data)
-  nbConf <- confusionMatrix(nbPred, test_label)
-  table_cm <- as.table(nbConf)
-  acc <- sum(diag(table_cm)) / sum(table_cm)
-  
-  # Plot ROC Curve
-  perf <- performance(pred_obj, measure = "tpr", x.measure = "fpr")
-  plot(perf, main = "ROC Curve", col = "blue", lwd = 2, legacy.axes = TRUE)
-  abline(a = 0, b = 1, lty = 2, col = "red")
-  
-  nbPredictiction <- prediction(as.numeric(nb_pred), as.numeric(test_label))
-  nbPerf <- performance(nbPredictiction, measure = "tpr", x.measure = "fpr")
-  nbAUC <- performance(nbPredictiction, measure = "auc")
-  
-  print(plot(nbPerf))
-  
-  # Extract performance metrics
-  sensitivity <- slot(nbPerf, "y.values")[[1]]
-  specificity <- 1 - slot(nbPerf, "x.values")[[1]]
-  auc <- slot(nbAUC, "y.values")
-  nbError <- mean(as.numeric(nb_pred) !=as.numeric(test_label))
-  
-  # Print performance metrics
-  print(nbConf)
-  print(paste0("Sensitivity: ", sensitivity))
-  print(paste0("Specificity: ", specificity))
-  print(paste0("AUC: ", auc))
-  print(paste0("Error rate:", nbError))
-  
-  # Calculate false positives
-  false_positives <- sum(as.numeric(nb_pred) == 2 & as.numeric(test_label) == 1)
-  
-  # Calculate false positives as a percentage
-  total_negatives <- sum(as.numeric(test_label) == 1)
-  false_positives_percent <- false_positives / total_negatives * 100
-  
-  # Print the false positives percentage
-  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
-  
-  return(list(false_positives_percent,round(acc,2)))
-}
-```
 
+# Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
 
-```{r}
-RFE.4.German <- RFE(newgerman)
-```
+spec.log  = 1 - (log.fp/log.n)
+sen.log   = log.tp/log.p
+oer.log1  = (log.fn + log.fp)/(log.n + log.p)
 
-```{r}
-result <- LDA.Model(RFE.4.German)
-result[]
-```
 
-```{r}
-pca.four <- Get.First.n.PCs(newgerman)
-pca.result <- LDA.Model(pca.four)
-pca.result[]
-```
 
+# ROCR #
+log.pred <- prediction(log.probs, test_data$Default) 
+log.perf <- performance(log.pred,"tpr","fpr")
+plot(log.perf,colorize=TRUE, lwd = 2)
+abline(a = 0, b = 1) 
 
-```{r}
-RFE.10.German <- RFE(newgerman, num.features=10)
-```
-```{r}
-result2 <- LDA.Model(RFE.10.German)
-result2[]
-```
-```{r}
-pca.ten <- Get.First.n.PCs(newgerman,10)
-pca.result2 <- LDA.Model(pca.ten)
-pca.result2[]
-```
 
-```{r}
-balanced.dummy.german <- ROSE(Default ~ ., data = newgerman, seed = 123)$data
-```
-```{r}
-RFE.4.German.balance <- RFE(balanced.dummy.german)
-```
+log.auc = performance(log.pred, measure = "auc")
 
-```{r}
-result3 <- LDA.Model(RFE.4.German.balance)
-result3[]
-```
-```{r}
-pca.four02 <- Get.First.n.PCs(balanced.dummy.german,4)
-pca.result3 <- LDA.Model(pca.four02)
-pca.result3[]
-```
-
-```{r}
-RFE.10.German.balance <- RFE(balanced.dummy.german, num.features=10)
-
-```
-
-```{r}
-result4 <- LDA.Model(RFE.10.German.balance)
-result4[]
-```
-```{r}
-pca.ten02 <- Get.First.n.PCs(balanced.dummy.german,10)
-pca.result4 <- LDA.Model(pca.ten02)
-pca.result4[]
-```
-
-
-
-```{r}
-qda.result <- QDA.Model(RFE.4.German)
-qda.result[]
-
-qda.pca.result <- QDA.Model(pca.four)
-qda.pca.result[]
-
-qda.result2 <- QDA.Model(RFE.10.German)
-qda.result2[]
-
-qda.pca.result2 <- QDA.Model(pca.ten)
-qda.pca.result2[]
-
-qda.result3 <- QDA.Model(RFE.4.German.balance)
-qda.result3[]
-
-qda.pca.result3 <- QDA.Model(pca.four02)
-qda.pca.result3[]
-
-qda.result4 <- QDA.Model(RFE.10.German.balance)
-qda.result4[]
-
-qda.pca.result4 <- QDA.Model(pca.ten02)
-qda.pca.result4[]
-```
-
-```{r}
-glm.result <- glm_func(RFE.4.German)
-glm.result[]
-
-glm.pca.result <- glm_func(pca.four)
-glm.pca.result[]
-
-glm.result2 <- glm_func(RFE.10.German)
-glm.result2[]
-
-glm.pca.result2 <- glm_func(pca.ten)
-glm.pca.result2[]
-
-glm.result3 <- glm_func(RFE.4.German.balance)
-glm.result3[]
-
-glm.pca.result3 <- glm_func(pca.four02)
-glm.pca.result3[]
-
-glm.result4 <- glm_func(RFE.10.German.balance)
-glm.result4[]
-
-glm.pca.result4 <- glm_func(pca.ten02)
-glm.pca.result4[]
-```
-
-```{r}
-knn.result <- KNN.Model(RFE.4.German)
-knn.result[]
-
-knn.pca.result <- KNN.Model(pca.four)
-knn.pca.result[]
-
-knn.result2 <- KNN.Model(RFE.10.German)
-knn.result2[]
-
-knn.pca.result2 <- KNN.Model(pca.ten)
-knn.pca.result2[]
-
-knn.result3 <- KNN.Model(RFE.4.German.balance)
-knn.result3[]
-
-knn.pca.result3 <- KNN.Model(pca.four02)
-knn.pca.result3[]
-
-knn.result4 <- KNN.Model(RFE.10.German.balance)
-knn.result4[]
-
-knn.pca.result4 <- KNN.Model(pca.ten02)
-knn.pca.result4[]
-```
-```{r}
-nb.result <- NB.Model(RFE.4.German)
-nb.result[]
-
-nb.pca.result <- NB.Model(pca.four)
-nb.pca.result[]
-
-nb.result2 <- NB.Model(RFE.10.German)
-nb.result2[]
-
-nb.pca.result2 <- NB.Model(pca.ten)
-nb.pca.result2[]
-
-nb.result3 <- NB.Model(RFE.4.German.balance)
-nb.result3[]
-
-nb.pca.result3 <- NB.Model(pca.four02)
-nb.pca.result3[]
-
-nb.result4 <- NB.Model(RFE.10.German.balance)
-nb.result4[]
-
-nb.pca.result4 <- NB.Model(pca.ten02)
-nb.pca.result4[]
-```
-
-
-```{r}
-comb_result1 <- cbind(RFE_4_feature = result[2],RFE_10_feature= result2[2],PC_5 = pca.result[2], PC_10 = pca.result2[2])
-
-qda_comb_result1 <- cbind(RFE_4_feature = qda.result[2],RFE_10_feature= qda.result2[2],PC_5 = qda.pca.result[2], PC_10 = qda.pca.result2[2])
-
-glm_comb_result1 <- cbind(RFE_4_feature = glm.result[2],RFE_10_feature= glm.result2[2],PC_5 = glm.pca.result[2], PC_10 = glm.pca.result2[2])
-
-knn_comb_result1 <- cbind(RFE_4_feature = knn.result[2],RFE_10_feature= knn.result2[2],PC_5 = knn.pca.result[2], PC_10 = knn.pca.result2[2])
-
-nb_comb_result1 <- cbind(RFE_4_feature = nb.result[2],RFE_10_feature= nb.result2[2],PC_5 = nb.pca.result[2], PC_10 = nb.pca.result2[2])
-
-comb_result2 <- cbind(RFE_4_feature =result3[2],RFE_10_feature=result4[2],PC_5 = pca.result3[2], PC_10 = pca.result4[2])
-
-qda_comb_result2 <- cbind(RFE_4_feature =qda.result3[2],RFE_10_feature=qda.result4[2],PC_5 = qda.pca.result3[2], PC_10 = qda.pca.result4[2])
-
-glm_comb_result2 <- cbind(RFE_4_feature =glm.result3[2],RFE_10_feature=glm.result4[2],PC_5 = glm.pca.result3[2], PC_10 = glm.pca.result4[2])
-
-knn_comb_result2 <- cbind(RFE_4_feature =knn.result3[2],RFE_10_feature=knn.result4[2],PC_5 = knn.pca.result3[2], PC_10 = knn.pca.result4[2])
-
-nb_comb_result2 <- cbind(RFE_4_feature =nb.result3[2],RFE_10_feature=nb.result4[2],PC_5 = nb.pca.result3[2], PC_10 = nb.pca.result4[2])
-
-comb_result <- rbind(comb_result1,qda_comb_result1,glm_comb_result1,knn_comb_result1, nb_comb_result1, comb_result2, qda_comb_result2, glm_comb_result2, knn_comb_result2, nb_comb_result2)
-
-rownames(comb_result) <- c("LDA(std)","LDA(balance)","QDA(std)","QDA(balance)", "GLM(std)","GLM(balance)", "KNN(std)","KNN(balance)", "NB(std)","NB(balance)")
-knitr::kable(comb_result, "simple")
-
-```
-
-```{r}
-
-comb_result1 <- cbind(RFE_4_feature = result[1],RFE_10_feature= result2[1],PC_5 = pca.result[1], PC_10 = pca.result2[1])
-
-qda_comb_result1 <- cbind(RFE_4_feature = qda.result[1],RFE_10_feature= qda.result2[1],PC_5 = qda.pca.result[1], PC_10 = qda.pca.result2[1])
-
-glm_comb_result1 <- cbind(RFE_4_feature = glm.result[1],RFE_10_feature= glm.result2[1],PC_5 = glm.pca.result[1], PC_10 = glm.pca.result2[1])
-
-knn_comb_result1 <- cbind(RFE_4_feature = knn.result[1],RFE_10_feature= knn.result2[1],PC_5 = knn.pca.result[1], PC_10 = knn.pca.result2[1])
-
-nb_comb_result1 <- cbind(RFE_4_feature = nb.result[1],RFE_10_feature= nb.result2[1],PC_5 = nb.pca.result[1], PC_10 = nb.pca.result2[1])
-
-comb_result2 <- cbind(RFE_4_feature =result3[1],RFE_10_feature=result4[1],PC_5 = pca.result3[1], PC_10 = pca.result4[1])
-
-qda_comb_result2 <- cbind(RFE_4_feature =qda.result3[1],RFE_10_feature=qda.result4[1],PC_5 = qda.pca.result3[1], PC_10 = qda.pca.result4[1])
-
-glm_comb_result2 <- cbind(RFE_4_feature =glm.result3[1],RFE_10_feature=glm.result4[1],PC_5 = glm.pca.result3[1], PC_10 = glm.pca.result4[1])
-
-knn_comb_result2 <- cbind(RFE_4_feature =knn.result3[1],RFE_10_feature=knn.result4[1],PC_5 = knn.pca.result3[1], PC_10 = knn.pca.result4[1])
-
-nb_comb_result2 <- cbind(RFE_4_feature =nb.result3[1],RFE_10_feature=nb.result4[1],PC_5 = nb.pca.result3[1], PC_10 = nb.pca.result4[1])
-
-comb_result <- rbind(comb_result1,qda_comb_result1,glm_comb_result1,knn_comb_result1, nb_comb_result1, comb_result2, qda_comb_result2, glm_comb_result2, knn_comb_result2, nb_comb_result2)
-
-rownames(comb_result) <- c("LDA(std)","LDA(balance)","QDA(std)","QDA(balance)", "GLM(std)","GLM(balance)", "KNN(std)","KNN(balance)", "NB(std)","NB(balance)")
-
-knitr::kable(comb_result, "rst")
-
+results.matrix[5,] = as.numeric( c(spec.log, sen.log, oer.log1, log.auc@y.values))
+results.matrix
 ```
