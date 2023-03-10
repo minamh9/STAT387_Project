@@ -27,7 +27,10 @@ library(pROC)        # for PCA
 ```{r}
 #LDA
 german <- read.csv("germancredit.csv", header=T)
+head(german)
+```
 
+```{r}
 german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
 
 german$Default = as.factor(german$Default)
@@ -141,6 +144,7 @@ results.matrix
 ```
 
 ```{r}
+# NB
 nb.fit = naiveBayes(Default~. , data = train_data)
 
 nb.class = predict(nb.fit , test_data)
@@ -184,16 +188,43 @@ results.matrix[3,] = as.numeric( c(spec.nb, sen.nb, oer.nb1, nb.auc@y.values))
 
 results.matrix
 ```
+
 ```{r}
 train_data.x = cbind(train_data[,-1])
 test_data.x = cbind(test_data[,-1])
 train_Y = train_data$Default
+```
 
-set.seed (1)
-knn.pred = knn(train_data.x, test_data.x, train_Y , k = 10, prob = T)
-table(knn.pred , test_Y)
+```{r}
+# Make a copy to kee mina's work
+data <- data.frame(head(german)[, 1:8])
+
+# Convert categorical variables to numerical variables using one-hot encoding
+data <- model.matrix(~ . - 1, data = data)
+
+# Split the data into training and testing sets
+trainIndex <- sample(1:nrow(data), 0.7 * nrow(data))
+train <- data[trainIndex, ]
+test <- data[-trainIndex, ]
+
+# Define the predictor variables and the target variable
+predictors <- colnames(train)[-ncol(train)]
+target <- "Default1"
+
+# Train the k-NN model
+model <- knn(train[, predictors], test[, predictors], train[, target], k = 3)
+
+# Predict the target variable for the test set
+predicted <- as.factor(model)
+
+# Print the accuracy of the model
+accuracy <- mean(predicted == test[, target])
+cat("Accuracy:", accuracy)
+
+```
 
 
+```{r}
 knn.tn = sum((test_Y == unique(test_Y)[1])&(knn.pred == unique(test_Y)[1]))
 knn.tp = sum((test_Y == unique(test_Y)[2])&(knn.pred == unique(test_Y)[2]))
 
