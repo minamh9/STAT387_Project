@@ -42,17 +42,7 @@ test_Y = test_data$Default
 results.matrix = matrix(0, nrow = 5, ncol = 4)
 
 
-<<<<<<< HEAD
 lda.fit = lda(Default~. , data = train_data)
-=======
-```{r}
-dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
-newgerman <- data.frame(predict(dummy, newdata = german))
-dim(newgerman)
-```
-
-```{r}
->>>>>>> 17022eb4a850e05003becd950832f4efc219157a
 
 #plot(lda.fit)
 lda.pred = predict(lda.fit, test_data)
@@ -105,7 +95,6 @@ results.matrix[1,] = as.numeric( c(spec.lda, sen.lda, oer.lda1, lda.auc@y.values
 results.matrix
 
 ```
-
 ```{r}
 #QDA
 qda.fit = qda(Default~. , data = train_data)
@@ -150,6 +139,7 @@ print(qda.auc@y.values)
 results.matrix[2,] = as.numeric( c(spec.qda, sen.qda, oer.qda1, qda.auc@y.values))
 results.matrix
 ```
+
 ```{r}
 nb.fit = naiveBayes(Default~. , data = train_data)
 
