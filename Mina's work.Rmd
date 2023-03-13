@@ -198,10 +198,9 @@ results.matrix
 ```
 
 ```{r}
-train_data.x = cbind(train_data[,-1])
-test_data.x = cbind(test_data[,-1])
-train_Y = train_data$Default
-train_data.x
+# train_data.x = cbind(train_data[,-1])
+# test_data.x = cbind(test_data[,-1])
+# train_Y = train_data$Default
 ```
 
 ```{r}
@@ -226,17 +225,17 @@ train_data.x <- data[trainIndex, ]
 test_data.x <- data[-trainIndex, ]
 
 # Define the predictor variables and the target variable
-predictors <- colnames(train)[-ncol(train)]
+predictors <- colnames(train_data.x)[-ncol(train_data.x)]
 
 # Target after getting dummies (necessary for KNN)
 target <- "Default1"
 
-test_Y <- test[, target]
-train_Y <- train[, target]
+knn.test_Y <- test_data.x[, target]
+knn.train_Y <- train_data.x[, target]
 
 # Train the k-NN model
 #model <- knn(train_data.x, test_data.x, train_Y, k = 3)
-knn.fit <- class::knn(train_data.x, test_data.x, train_Y, k=2, prob=TRUE)
+knn.fit <- class::knn(train_data.x, test_data.x, knn.train_Y, k=2, prob=TRUE)
 knn.prob <- attr(knn.fit, "prob")
 
 # these come on a form that ROCR does not accept so we need to invert them for
@@ -244,7 +243,7 @@ knn.prob <- attr(knn.fit, "prob")
 knn.prob <- 2*ifelse(knn.fit == "-1", 1-knn.prob, knn.prob) - 1
 
 # # Predict the target variable for the test set
-# knn.pred <- as.factor(model)
+knn.pred <- as.factor(knn.fit)
 # 
 # # Print the accuracy of the model
 # accuracy <- mean(knn.pred == test_Y)
@@ -253,11 +252,11 @@ knn.prob <- 2*ifelse(knn.fit == "-1", 1-knn.prob, knn.prob) - 1
 
 
 ```{r}
-knn.tn = sum((test_Y == unique(test_Y)[1])&(knn.pred == unique(test_Y)[1]))
-knn.tp = sum((test_Y == unique(test_Y)[2])&(knn.pred == unique(test_Y)[2]))
+knn.tn = sum((knn.pred == unique(knn.test_Y)[1])&(knn.pred == unique(knn.test_Y)[1]))
+knn.tp = sum((knn.pred == unique(knn.test_Y)[2])&(knn.pred == unique(knn.test_Y)[2]))
 
-knn.fp = sum((test_Y == unique(test_Y)[1])&(knn.pred == unique(test_Y)[2]))
-knn.fn = sum((test_Y == unique(test_Y)[2])&(knn.pred == unique(test_Y)[1]))
+knn.fp = sum((knn.pred == unique(knn.test_Y)[1])&(knn.pred == unique(knn.test_Y)[2]))
+knn.fn = sum((knn.pred == unique(knn.test_Y)[2])&(knn.pred == unique(knn.test_Y)[1]))
 
 knn.n = knn.tn + knn.fp
 knn.p = knn.fn + knn.tp
@@ -270,22 +269,8 @@ oer.knn1  = (knn.fn + knn.fp)/(knn.n + knn.p)
 ```
 
 ```{r}
-class(knn.fit)
-```
-
-```{r}
-nb.pred = predict(nb.fit , test_data, type = "raw")
-nb.pred <- prediction(nb.pred[,2], test_data$Default) 
-nb.perf <- performance(nb.pred,"tpr","fpr")
-```
-
-```{r}
-class(model)
-```
-
-```{r}
 # ROCR #
-knn.pred <- prediction(knn.prob, test_Y)
+knn.pred <- prediction(knn.prob, knn.test_Y)
 knn.pred <- performance(knn.pred, "tpr", "fpr")
 plot(knn.pred, avg= "threshold", colorize=T, lwd=3, main="KNN ROC curve")
 abline(a = 0, b = 1) 
@@ -338,7 +323,7 @@ spec.log  = 1 - (log.fp/log.n)
 sen.log   = log.tp/log.p
 oer.log1  = (log.fn + log.fp)/(log.n + log.p)
 
-
+ 
 
 # ROCR #
 log.pred <- prediction(log.probs, test_data$Default) 
