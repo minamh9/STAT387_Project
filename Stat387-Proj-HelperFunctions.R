@@ -619,7 +619,7 @@ name.dict = c(
    "A173" = "Skilled employee/official",
    "A174" = "Management/self-employed/highly qualified employee/officer",
    "A191" = "None",
-   "A192" = "Yes (registered uner the customer's name)",
+   "A192" = "Yes",
    "A201" = "Yes",
    "A202" = "No"
 )
