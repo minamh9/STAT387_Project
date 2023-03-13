@@ -1,0 +1,351 @@
+---
+title: "stat387"
+author: "Mina Mehdinia, Tim Luo, Will McIntosh"
+date: "2023-03-01"
+output: html_document
+---
+```{r setup, include = F}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(MASS)        # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
+library(ROCR)        # Precision/Recall/Sens./Spec./ performance plot
+library(class)       # KNN, SOM, LVQ
+library(e1071)       # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
+library(boot)        # LOOCV, Bootstrap
+library(caret)       # Classification/Regression Training
+library(dplyr)       # For piping and mutation methods
+library(ggplot2)     # For plots
+library(randomForest)# for RFE
+library(naivebayes)  # for NB
+library(ROSE)        # for SMOTE
+#library(mlbench)
+library(fastDummies) # For Get Dummies
+library(pROC)        # for PCA
+source("Stat387-Proj-HelperFunctions.R")
+#library()
+# rm(list=ls())
+```
+
+# Import Dataset
+
+```{r read}
+german <- read.csv("germancredit.csv", header=T)
+head(german)[1:7]
+```
+
+# Examine Dimensions
+
+```{r}
+# Counting Just the rows that did not Default (Good!)
+default.0 <- dim(german[german$Default == 0, ])[1]
+default.1 <- dim(german[german$Default == 1, ])[1]
+paste("The number of those that did not default are", default.0, "and those that did default are", default.1)
+```
+
+# Visualizing Dataset Class Imbalance
+
+```{r}
+Balance.Plot(german)
+```
+
+
+```{r}
+# SMOTE Requires dummy variables
+dummy.german <- GetDummies(german)
+
+# Apply SMOTE to balance the dataset
+balanced.dummy.german <- ROSE(Default ~ ., data = dummy.german, seed = 123)$data
+```
+
+```{r}
+Balance.Plot(balanced.dummy.german)
+```
+
+# Value Counts For Each Class Type
+
+```{r}
+Count.Plot(german, "checkingstatus1")
+```
+
+```{r}
+Count.Plot(german, "history")
+```
+
+```{r}
+Count.Plot(german, "purpose")
+```
+
+```{r}
+Count.Plot(german, "savings")
+```
+
+```{r}
+Count.Plot(german, "employ")
+```
+
+# Plotting Numerical Variable Distributions
+
+```{r}
+Density.Plot(german, "duration")
+```
+
+```{r}
+Density.Plot(german, "amount")
+```
+
+```{r}
+Density.Plot(german, "installment")
+```
+
+```{r}
+Density.Plot(german, "residence")
+```
+
+```{r}
+Density.Plot(german, "age")
+```
+
+```{r}
+Density.Plot(german, "cards")
+```
+
+```{r}
+Density.Plot(german, "liable")
+```
+
+```{r}
+Density.Plot(balanced.dummy.german, "liable")
+```
+
+# RFE
+
+```{r}
+RFE.4.German <- RFE(german)
+```
+
+```{r}
+RFE.10.German <- RFE(german, num.features=10)
+```
+
+```{r}
+RFE.4.Dummy.German <- RFE(dummy.german)
+```
+
+```{r}
+RFE.2.Dummy.German <- RFE(dummy.german, num.features=2)
+```
+
+```{r}
+RFE.10.Dummy.German <- RFE(dummy.german, num.features=10)
+```
+
+```{r}
+RFE.10.Balanced.Dummy.German <- RFE(balanced.dummy.german, num.features = 10)
+```
+
+# Running PCA Dimensionality Reduction
+
+```{r}
+# According to James et al. (2017), it is generally recommended to standardize
+# the dataset before performing PCA, to ensure that the principal components
+# accurately capture the variation in the data and the relative importance of
+# each variable (p. 373, Chapter 10).
+
+# Perform PCA (PCA Requires Dummy Variables)
+dummy.german.std <- StandardizeData(dummy.german)
+german.pca <- prcomp(dummy.german.std, center = TRUE, scale. = TRUE)
+```
+
+```{r}
+# Plot the standard deviations as a line plot
+sd <- summary(german.pca)$sdev
+plot(sd, type = "b", xlab = "Principle Component", ylab = "Standard Deviation")
+```
+
+```{r}
+# Plot the Proportion of Variance as a line plot
+pov <- german.pca$sdev^2/sum(german.pca$sdev^2)
+plot(pov, type = "b", xlab = "Principal Component", ylab = "Proportion of Variance")
+```
+
+## Running PCA On the Balanced Dataset
+
+```{r}
+# Standardize the data
+balanced.dummy.german.std <- StandardizeData(balanced.dummy.german)
+
+# Perform PCA
+balanced.dummy.german.std.pca <- prcomp(balanced.dummy.german.std, center=TRUE, scale.=TRUE)
+```
+
+```{r}
+# Plot the standard deviations as a line plot
+sd <- summary(german.balanced.pca)$sdev
+plot(sd, type = "b", xlab = "Principle Component", ylab = "Standard Deviation")
+```
+
+```{r}
+# Plot the "Proportion of Variance" as a line plot
+pov <- german.balanced.pca$sdev^2/sum(german.balanced.pca$sdev^2)
+plot(pov, type = "b", xlab = "Principal Component", ylab = "Proportion of Variance")
+```
+
+# Passing PCA Results in NB
+
+# NB w/ PCA On All Components
+
+```{r}
+NB.Model.PCA(german.pca, dummy.german.std)
+```
+
+```{r}
+NB.Model(dummy.german.std)
+```
+
+# NB w/ PCA On First Four Components
+
+```{r}
+NB.Model(dummy.german.std)
+```
+
+```{r}
+german.pca.first.four <- Get.First.n.PCs(german.pca, 4)
+
+```
+
+# NB w/ PCA On First Nine Components
+
+```{r}
+german.pca.first.nine <- Get.First.n.PCs(german.pca, 9)
+NB.Model.PCA(german.pca.first.nine, dummy.german_std)
+```
+
+# NB w/ PCA On First Twenty Components
+
+```{r}
+german.pca.first.twenty <- Get.First.n.PCs(german.pca, 20)
+NB.Model.PCA(german.pca.first.twenty, dummy.german_std)
+```
+
+```{r}
+NB.Model(RFE.10.Balanced.Dummy.German)
+```
+
+# Passing PCA Results in KNN
+
+```{r}
+KNN.Model(dummy.german.std)
+```
+
+```{r}
+KNN.Model(RFE.4.German)
+```
+
+```{r}
+KNN.Model(RFE.10.German)
+```
+
+```{r}
+knn.RFE.10.balanced.dummy.german.fp <- KNN.Model(RFE.10.Balanced.Dummy.German)
+nb.RFE.10.balanced.dummy.german.fp <- NB.Model(RFE.10.Balanced.Dummy.German)
+```
+
+
+```{r}
+LDA.Model(RFE.4.German)
+```
+
+```{r}
+QDA.Model(RFE.4.German)
+```
+
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+p = 0.7
+
+# Create test/train split
+split <- createDataPartition(german$Default, p=p, list=FALSE)
+
+# Subset data into training and testing sets
+train.data <- german[split, ]
+test.data <- german[-split, ]
+
+print(dim(train.data))
+print(dim(test.data))
+```
+
+```{r}
+RFE.10.dummy.german <- RFE(dummy.german, num.features = 10)
+```
+
+```{r}
+RFE.10.dummy.german.colnames <- colnames(RFE.10.dummy.german)
+RFE.10.dummy.german.colnames
+```
+
+```{r}
+library(corrplot)
+
+RFE.10.dummy.german.colnames.subset <- dummy.german[RFE.10.dummy.german.colnames]
+
+target <- cor(dummy.german)[,1, drop=FALSE]
+
+corrplot(target, cl.pos="n", method="number")
+```
+
+```{r}
+df <- data.frame(german)
+
+dictionary <- colname.dict
+
+# Replace values in dataframe using dictionary without changing data types
+df[] <- lapply(df, function(x) {
+  if(is.character(x)) {
+    replace(x, x %in% names(dictionary), dictionary[names(dictionary) %in% x])
+  } else {
+    x
+  }
+})
+```
+
+
+```{r}
+#df
+```
+
+```{r}
+#summary(lm(Default~.,df))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,24 +1,361 @@
 ---
 title: "stat387"
-author: "Mina Mehdinia, Tim Luo, ADD Your name and push it"
+author: "Mina Mehdinia, Tim Luo, Will McIntosh"
 date: "2023-03-01"
 output: html_document
 ---
+# Setup
+
 ```{r setup, include = F}
-knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
-library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc...
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)  # Suite of packages incl: dplyr, ggplot2, tidyr, etc.
+library(MASS)       # LDA, QDA, OLS, Ridge Regression, Box-Cox, stepAIC, etc.
 library(ROCR)       # Precision/Recall/Sens./Spec./ performance plot
 library(class)      # KNN, SOM, LVQ
 library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
 library(boot)       # LOOCV, Bootstrap
 library(caret)      # Classification/Regression Training
+library(randomForest) # Random forest
+library(naivebayes) 
 # rm(list=ls())
 ```
 
-
 ```{r read}
-german <- read.csv("germancredit.csv", header=T)
-german
+german <- read.csv("germancredit.csv", header=T) |> 
+  rename(checking = checkingstatus1) |> 
+  mutate(status_fix = ifelse(status  %in% c("A91", "A94"), "A96", status),
+         .after = status)
+
+# Example: dict["A12"] -> "0 to 200 DM"
+dict = c("A11" = "Less than 0 DM",
+         "A12" = "0 to 200 DM",
+         "A13" = "More than 200 DM",
+         "A14" = "No checking account",
+         "A30" = "No credit taken or all credit paid back",
+         "A31" = "All credits at this bank paid back",
+         "A32" = "Existing credits bac back until now",
+         "A33" = "Delay in paying off credit in the past",
+         "A34" = "Critical account or other credits existing",
+         "A40" = "Car (new)",
+         "A41" = "Car (used)",
+         "A42" = "Furniture/equipment",
+         "A43" = "Radio/television",
+         "A44" = "Domestic appliances",
+         "A45" = "Repairs",
+         "A46" = "Ecuation",
+         "A47" = "Vacation",
+         "A48" = "Retraining",
+         "A49" = "Business",
+         "A410" = "Other",
+         "A61" = "Less than 100 DM",
+         "A62" = "100 to 500 DM",
+         "A63" = "500 to 1,000 DM",
+         "A64" = "More than 1,000 DM",
+         "A65" = "Unknown/no savings account",
+         "A71" = "Unemployed",
+         "A72" = "Less than 1 year",
+         "A73" = "1 to 4 years",
+         "A74" = "4 to 7 years",
+         "A75" = "More than 7 years",
+         "A91" = "Male (divorced/separated)",
+         "A92" = "Female (divorced/separated/married)",
+         "A93" = "Male (single)",
+         "A94" = "Male (married/widowed)",
+         "A95" = "Female (single)",
+         "A96" = "Male (divorced/separated/married)",
+         "A101" = "None",
+         "A102" = "Co-applicant",
+         "A103" = "Guarantor",
+         "A121" = "Real estate",
+         "A122" = "Building society savings agreement/life insurance",
+         "A123" = "Car or other",
+         "A124" = "Unknown/no property",
+         "A141" = "Bank",
+         "A142" = "Stores",
+         "A143" = "None",
+         "A151" = "Rent",
+         "A152" = "Own",
+         "A153" = "Free",
+         "A171" = "Unemployed/unskilled (non-resident)",
+         "A172" = "Unemployed/unskilled (resident)",
+         "A173" = "Skilled employee/official",
+         "A174" = "Management/self-employed/highly qualified employee/officer",
+         "A191" = "None",
+         "A192" = "Yes (registered uner the customer's name)",
+         "A201" = "Yes",
+         "A202" = "No"
+         )
+
+```
+
+
+```{r}
+set.seed(1)
+
+```
+
+
+# One-Hot Encoding
+
+Below I am making dummy variables (or one-hot encodings) of the categorical variables (WMM - 3/2/23).
+
+```{r}
+dummy <- dummyVars(" ~ .", data=german)
+newgerman <- data.frame(predict(dummy, newdata = german))
+head(newgerman)
+```
+
+# Value Counts For Each Class Type
+
+```{r}
+Count.Plot <- function(data, column.name) {  
+  german.0.default <- data[data$Default == 0, ]
+  german.1.default <- data[data$Default == 1, ]
+  
+  checkingstatus.counts.0 <- table(german.0.default[column.name])
+  checkingstatus.counts.1 <- table(german.1.default[column.name])
+  
+  counts.df.0 <- as.data.frame(checkingstatus.counts.0)
+  counts.df.1 <- as.data.frame(checkingstatus.counts.1)
+  
+  colnames(counts.df.0) <- c(column.name, "count")
+  colnames(counts.df.1) <- c(column.name, "count")
+  
+  counts.df.0 <- counts.df.0 %>% mutate(class = 0)
+  counts.df.1 <- counts.df.1 %>% mutate(class = 1)
+  
+  # Combine the two data frames
+  combined_df <- rbind(counts.df.0, counts.df.1)
+  
+  # Create the plot
+  ggplot(combined_df, aes(x = combined_df[,column.name], y = count, fill = as.factor(class))) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(x = column.name, y = "Count", fill = "Default") +
+    scale_fill_manual(labels = c("Good", "Bad"),
+                      values = c("#00BFC4", "#F8766D")) +
+    theme_minimal()
+}
+```
+
+## Plotting Checking Status Count Per Class
+
+```{r}
+Count.Plot(german, "checking")
+```
+
+## Plotting History Count Per Class
+
+```{r}
+Count.Plot(german, "history")
+```
+
+## Plotting Purpose Count Per Class
+
+```{r}
+Count.Plot(german, "purpose")
+```
+
+## Plotting Savings Count Per Class
+
+```{r}
+Count.Plot(german, "savings")
+```
+
+## Plotting Employ Count Per Class
+
+```{r}
+Count.Plot(german, "employ")
+```
+
+# Displaying Duration For Each Class
+
+```{r}
+Density.Plot <- function(data, column.name) {
+  
+  # Create subsets of the dataframe based on the binary class
+  df_default0 <- data[data[["Default"]] == 0,]
+  df_default1 <- data[data[["Default"]] == 1,]
+  
+  # Plot the two density plots on the same plot
+  ggplot() +
+    geom_density(data = df_default0, aes(x = df_default0[,column.name], fill = "Default 0"), alpha = 0.5) +
+    geom_density(data = df_default1, aes(x = df_default1[,column.name], fill = "Default 1"), alpha = 0.5) +
+    labs(title = paste("Distribution of", column.name, "by Default"),
+         x = column.name,
+         y = "Density") +
+    scale_fill_manual(values = c("#F8766D", "#00BFC4"), name = "Default") +
+    theme_minimal()
+}
+```
+
+# Displaying Amount For Each Class
+
+```{r}
+Density.Plot(german, "duration")
+```
+
+```{r}
+Density.Plot(german, "amount")
+```
+
+```{r}
+Density.Plot(german, "installment")
+```
+
+```{r}
+Density.Plot(german, "residence")
+```
+
+```{r}
+Density.Plot(german, "age")
+```
+
+```{r}
+Density.Plot(german, "cards")
+```
+
+```{r}
+Density.Plot(german, "liable")
+```
+
+
+# One-Hot Encoding
+
+Below I am making dummy variables (or one-hot encodings) of the categorical variables.
+
+```{r}
+dummy <- dummyVars(" ~ .", data=german)
+dummy.german <- data.frame(predict(dummy, newdata = german)) 
+head(dummy.german)
+```
+
+# RFE
+
+```{r}
+RFE <- function(data, num.features=4) {
+  # Define the predictor and response variables
+  train.X <- data[, !(names(data) %in% c("Default"))]
+  train.Y <- as.factor(data[, "Default"])
+  
+  # Define the control parameters for feature selection
+  ctrl <- rfeControl(functions = rfFuncs,
+                     method = "cv",
+                     number = 10)
+  
+  # Perform recursive feature elimination using the random forest algorithm
+  rf_rfe <- rfe(train.X, train.Y, sizes = c(1:num.features), rfeControl = ctrl)
+  
+  # Print the results
+  print(rf_rfe)
+  
+  # Plot the results
+  plot(rf_rfe, type = c("g", "o"))
+}
+```
+
+## Running RFE on Dummy-Variabled German Data
+
+```{r}
+RFE(german)
+```
+
+## Running RFE on Dummy-Variabled German Data
+
+```{r}
+RFE(dummy.german)
+```
+
+## Running RFE on Dummy-Variabled German Data with Only 2 Variables
+
+```{r}
+RFE(dummy.german, num.features=2)
+```
+
+## Running RFE on Dummy-Variabled German Data with 10 Variables
+
+```{r}
+RFE(dummy.german, num.features=10)
+```
+
+## Running RFE on Dummy-Variabled German Data with 20 Variables
+
+```{r}
+RFE(dummy.german, num.features=20)
+```
+
+# Running PCA Dimensionality Reduction
+
+The first 26 features are statistically significant since they're ab
+
+```{r}
+# Standardize the data
+dummy.german_std <- scale(dummy.german)
+
+# Perform PCA
+german.pca <- prcomp(dummy.german_std, center = TRUE, scale. = TRUE)
+
+# Interpret the results
+summary(german.pca)
+```
+
+```{r}
+# Extract the standard deviations of each principal component
+sd <- summary(german.pca)$sdev
+
+# Plot the standard deviations as a line plot
+plot(sd, type = "b", xlab = "Principal Component", ylab = "Standard Deviation")
+```
+
+# Passing PCA Results in NB
+
+```{r}
+# Extract the principal component scores
+pc_scores <- predict(german.pca, dummy.german_std)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+train_data <- pc_scores[train_index, ]
+train_label <- as.factor(dummy.german_std[train_index,"Default"])
+test_data <- pc_scores[-train_index, ]
+test_label <- as.factor(dummy.german_std[-train_index,"Default"])
+
+# Train the Naïve Bayes classifier using the training data
+model <- naive_bayes(train_data, train_label)
+
+# Predict the test data using the trained model
+model.preds <- predict(model, test_data)
+
+# Evaluate the performance of the model
+confusionMatrix(model.preds, test_label)
+```
+
+# Passing PCA Results in KNN
+
+```{r}
+# Extract the principal component scores
+pc_scores <- predict(german.pca, dummy.german_std)
+
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_index <- sample(nrow(dummy.german_std), nrow(dummy.german_std) * 0.7) # 70% for training
+train_data <- pc_scores[train_index, ]
+train_label <- as.factor(dummy.german_std[train_index,"Default"])
+test_data <- pc_scores[-train_index, ]
+test_label <- as.factor(dummy.german_std[-train_index,"Default"])
+
+# Train the KNN classifier using the training data
+knn_model <- train(
+  x = train_data,
+  y = train_label,
+  method = "knn",
+  trControl = trainControl(method = "cv", number = 10)
+)
+
+# Predict the test data using the trained model
+knn_pred <- predict(knn_model, newdata = test_data)
+
+# Evaluate the performance of the model
+confusionMatrix(model.preds, test_label)
 ```
 
