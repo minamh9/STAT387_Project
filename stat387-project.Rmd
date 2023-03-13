@@ -13,7 +13,6 @@ library(class)      # KNN, SOM, LVQ
 library(e1071)      # Naive Bayesian Classifier, SVM, GKNN, ICA, LCA
 library(boot)       # LOOCV, Bootstrap
 library(caret)      # Classification/Regression Training
-library()
 # rm(list=ls())
 ```
 
