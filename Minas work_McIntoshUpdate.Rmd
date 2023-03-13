@@ -320,7 +320,7 @@ log.p = log.fn + log.tp
 # Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
 
 spec.log  = 1 - (log.fp/log.n)
-sen.log   = log.tp/log.p
+sen.log   = log.tp/log.p 
 oer.log1  = (log.fn + log.fp)/(log.n + log.p)
 
  
