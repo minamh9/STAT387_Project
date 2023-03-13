@@ -144,6 +144,14 @@ results.matrix
 ```
 
 ```{r}
+class(test_Y)
+```
+
+```{r}
+test_Y
+```
+
+```{r}
 # NB
 nb.fit = naiveBayes(Default~. , data = train_data)
 
@@ -193,34 +201,54 @@ results.matrix
 train_data.x = cbind(train_data[,-1])
 test_data.x = cbind(test_data[,-1])
 train_Y = train_data$Default
+train_data.x
 ```
 
 ```{r}
-# Make a copy to kee mina's work
-data <- data.frame(head(german)[, 1:8])
+# Make a dataset of 150% of the original.
+# Now we can perform the industry standard train, test, split on this 150% data.
+german.half.indexes <- sample(1:nrow(german), 0.5 * nrow(german))
+german.half <- german[german.half.indexes, ]
+german.150.percent <- rbind(german, german.half)
+paste0("The dataset now has ", dim(german.150.percent)[1], " rows. ")
+```
+
+```{r}
+# Make a copy
+data <- data.frame(german.150.percent)
 
 # Convert categorical variables to numerical variables using one-hot encoding
 data <- model.matrix(~ . - 1, data = data)
 
 # Split the data into training and testing sets
 trainIndex <- sample(1:nrow(data), 0.7 * nrow(data))
-train <- data[trainIndex, ]
-test <- data[-trainIndex, ]
+train_data.x <- data[trainIndex, ]
+test_data.x <- data[-trainIndex, ]
 
 # Define the predictor variables and the target variable
 predictors <- colnames(train)[-ncol(train)]
+
+# Target after getting dummies (necessary for KNN)
 target <- "Default1"
 
+test_Y <- test[, target]
+train_Y <- train[, target]
+
 # Train the k-NN model
-model <- knn(train[, predictors], test[, predictors], train[, target], k = 3)
+#model <- knn(train_data.x, test_data.x, train_Y, k = 3)
+knn.fit <- class::knn(train_data.x, test_data.x, train_Y, k=2, prob=TRUE)
+knn.prob <- attr(knn.fit, "prob")
 
-# Predict the target variable for the test set
-predicted <- as.factor(model)
+# these come on a form that ROCR does not accept so we need to invert them for
+# the -1 class and rescale them.
+knn.prob <- 2*ifelse(knn.fit == "-1", 1-knn.prob, knn.prob) - 1
 
-# Print the accuracy of the model
-accuracy <- mean(predicted == test[, target])
-cat("Accuracy:", accuracy)
-
+# # Predict the target variable for the test set
+# knn.pred <- as.factor(model)
+# 
+# # Print the accuracy of the model
+# accuracy <- mean(knn.pred == test_Y)
+# cat("Accuracy:", accuracy)
 ```
 
 
@@ -234,28 +262,47 @@ knn.fn = sum((test_Y == unique(test_Y)[2])&(knn.pred == unique(test_Y)[1]))
 knn.n = knn.tn + knn.fp
 knn.p = knn.fn + knn.tp
 
-
-
 # Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
 spec.knn  = 1 - (knn.fp/knn.n)
 sen.knn   = knn.tp/knn.p
 oer.knn1  = (knn.fn + knn.fp)/(knn.n + knn.p)
 #oer.knn2  = 1 - mean(knn.pred == Direction.2005)
+```
 
+```{r}
+class(knn.fit)
+```
 
+```{r}
+nb.pred = predict(nb.fit , test_data, type = "raw")
+nb.pred <- prediction(nb.pred[,2], test_data$Default) 
+nb.perf <- performance(nb.pred,"tpr","fpr")
+```
 
+```{r}
+class(model)
+```
+
+```{r}
 # ROCR #
-knn.pred <- prediction(attributes(knn.pred)$prob,test_data$Default) 
-knn.perf <- performance(knn.pred, "tpr", "fpr")
-plot(knn.perf, colorize = TRUE, lwd = 2)
+knn.pred <- prediction(knn.prob, test_Y)
+knn.pred <- performance(knn.pred, "tpr", "fpr")
+plot(knn.pred, avg= "threshold", colorize=T, lwd=3, main="KNN ROC curve")
 abline(a = 0, b = 1) 
+```
 
+```{r}
+knn.auc <- (knn.tp + knn.tn)/(knn.n + knn.p)
+knn.auc
+```
 
-knn.auc = performance(knn.pred, measure = "auc")
+```{r}
+#knn.auc = performance(knn.pred, measure = "auc")
 #print(knn.auc@y.values)
 
 
-results.matrix[4,] = as.numeric( c(spec.knn, sen.knn, oer.knn1, knn.auc@y.values))
+results.matrix[4,] = as.numeric( c(spec.knn, sen.knn, oer.knn1, knn.auc))
+results.matrix
 ```
 
 ```{r}
