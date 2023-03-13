@@ -53,11 +53,6 @@ Balance.Plot(german)
 # SMOTE Requires dummy variables
 dummy.german <- GetDummies(german)
 
-# Deal with multicolinearity for one-hot-encoded dataset
-dummy.df = GetDummies(german, dropFirst = T)
-
-
-
 # Apply SMOTE to balance the dataset
 balanced.dummy.german <- ROSE(Default ~ ., data = dummy.german, seed = 123)$data
 ```
@@ -199,6 +194,9 @@ plot(pov, type = "b", xlab = "Principal Component", ylab = "Proportion of Varian
 
 # NB w/ PCA On All Components
 
+```{r}
+NB.Model.PCA(german.pca, dummy.german.std)
+```
 
 ```{r}
 NB.Model(dummy.german.std)
@@ -207,20 +205,26 @@ NB.Model(dummy.german.std)
 # NB w/ PCA On First Four Components
 
 ```{r}
+NB.Model(dummy.german.std)
+```
+
+```{r}
 german.pca.first.four <- Get.First.n.PCs(german.pca, 4)
-plot(german.pca.first.four$rotation)
+
 ```
 
 # NB w/ PCA On First Nine Components
 
 ```{r}
 german.pca.first.nine <- Get.First.n.PCs(german.pca, 9)
+NB.Model.PCA(german.pca.first.nine, dummy.german_std)
 ```
 
 # NB w/ PCA On First Twenty Components
 
 ```{r}
 german.pca.first.twenty <- Get.First.n.PCs(german.pca, 20)
+NB.Model.PCA(german.pca.first.twenty, dummy.german_std)
 ```
 
 ```{r}
@@ -234,7 +238,7 @@ KNN.Model(dummy.german.std)
 ```
 
 ```{r}
-KNN.Model(RFE.4.German) 
+KNN.Model(RFE.4.German)
 ```
 
 ```{r}
@@ -256,11 +260,65 @@ QDA.Model(RFE.4.German)
 ```
 
 
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+p = 0.7
+
+# Create test/train split
+split <- createDataPartition(german$Default, p=p, list=FALSE)
+
+# Subset data into training and testing sets
+train.data <- german[split, ]
+test.data <- german[-split, ]
+
+print(dim(train.data))
+print(dim(test.data))
+```
+
+```{r}
+RFE.10.dummy.german <- RFE(dummy.german, num.features = 10)
+```
+
+```{r}
+RFE.10.dummy.german.colnames <- colnames(RFE.10.dummy.german)
+RFE.10.dummy.german.colnames
+```
+
+```{r}
+library(corrplot)
+
+RFE.10.dummy.german.colnames.subset <- dummy.german[RFE.10.dummy.german.colnames]
+
+target <- cor(dummy.german)[,1, drop=FALSE]
+
+corrplot(target, cl.pos="n", method="number")
+```
+
+```{r}
+df <- data.frame(german)
+
+dictionary <- colname.dict
+
+# Replace values in dataframe using dictionary without changing data types
+df[] <- lapply(df, function(x) {
+  if(is.character(x)) {
+    replace(x, x %in% names(dictionary), dictionary[names(dictionary) %in% x])
+  } else {
+    x
+  }
+})
+```
 
 
+```{r}
+#df
+```
 
-
-
+```{r}
+#summary(lm(Default~.,df))
+```
 
 
 

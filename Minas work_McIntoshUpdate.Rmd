@@ -4,7 +4,7 @@ author: "Mina Mehdinia"
 date: "2023-03-03"
 output: html_document
 ---
-# Setup
+
 
 ```{r setup, include = F}
 knitr::opts_chunk$set(echo = TRUE)
@@ -22,7 +22,6 @@ library(naivebayes)  # for NB
 library(ROSE)        # for SMOTE
 library(fastDummies) # For Get Dummies
 library(pROC)        # for PCA
-# rm(list=ls())
 ```
 
 ```{r}
@@ -30,8 +29,6 @@ library(pROC)        # for PCA
 german <- read.csv("germancredit.csv", header=T)
 head(german)
 ```
-
-# LDA
 
 ```{r}
 german[, sapply(german, is.character)] <- lapply(german[, sapply(german, is.character)], as.factor)
@@ -41,7 +38,7 @@ german$Default = as.factor(german$Default)
 train_index = sample(nrow(german), nrow(german) * 0.5) # 50% for training
 
 set.seed(123) # for reproducibility
-train_data = german[]
+train_data =german[]
 test_data = german[-train_index, ]
 test_Y = test_data$Default
   
@@ -101,9 +98,6 @@ results.matrix[1,] = as.numeric( c(spec.lda, sen.lda, oer.lda1, lda.auc@y.values
 results.matrix
 
 ```
-
-# QDA
-
 ```{r}
 #QDA
 qda.fit = qda(Default~. , data = train_data)
@@ -148,8 +142,6 @@ print(qda.auc@y.values)
 results.matrix[2,] = as.numeric( c(spec.qda, sen.qda, oer.qda1, qda.auc@y.values))
 results.matrix
 ```
-
-# Naive Bayes
 
 ```{r}
 class(test_Y)
@@ -205,8 +197,6 @@ results.matrix[3,] = as.numeric( c(spec.nb, sen.nb, oer.nb1, nb.auc@y.values))
 results.matrix
 ```
 
-# KNN
-
 ```{r}
 # train_data.x = cbind(train_data[,-1])
 # test_data.x = cbind(test_data[,-1])
@@ -260,6 +250,7 @@ knn.pred <- as.factor(knn.fit)
 # cat("Accuracy:", accuracy)
 ```
 
+
 ```{r}
 knn.tn = sum((knn.pred == unique(knn.test_Y)[1])&(knn.pred == unique(knn.test_Y)[1]))
 knn.tp = sum((knn.pred == unique(knn.test_Y)[2])&(knn.pred == unique(knn.test_Y)[2]))
@@ -299,8 +290,6 @@ results.matrix[4,] = as.numeric( c(spec.knn, sen.knn, oer.knn1, knn.auc))
 results.matrix
 ```
 
-# Logistic Regression
-
 ```{r}
 log.reg = glm(Default~. , data = train_data, family = binomial(link = "logit"))
 
@@ -331,7 +320,7 @@ log.p = log.fn + log.tp
 # Specificity, Sensitivity, Overall Error/ Probability of Misclassification #
 
 spec.log  = 1 - (log.fp/log.n)
-sen.log   = log.tp/log.p
+sen.log   = log.tp/log.p 
 oer.log1  = (log.fn + log.fp)/(log.n + log.p)
 
  
