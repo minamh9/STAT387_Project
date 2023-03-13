@@ -563,9 +563,9 @@ QDA.Model <- function(data) {
 #======================================= DICT ==================================
 #===============================================================================
 
-# Example: dict["A12"] -> "0 to 200 DM"
-colname.dict = c(
-  "A11" = "Less than 0 DM",
+# Example: name.dict["A12"] -> "0 to 200 DM"
+name.dict = c(
+   "A11" = "Less than 0 DM",
    "A12" = "0 to 200 DM",
    "A13" = "More than 200 DM",
    "A14" = "No checking account",
@@ -580,7 +580,7 @@ colname.dict = c(
    "A43" = "Radio/television",
    "A44" = "Domestic appliances",
    "A45" = "Repairs",
-   "A46" = "Ecuation",
+   "A46" = "Education",
    "A47" = "Vacation",
    "A48" = "Retraining",
    "A49" = "Business",
