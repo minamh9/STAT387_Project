@@ -79,9 +79,7 @@ Balance.Plot <- function(data) {
   ggplot(class_counts, aes(x = class, y = Freq, fill=as.factor(class))) +
     geom_bar(stat = "identity") +
     labs(x = "Class", y = "Count", title = "Class Counts") +
-    scale_fill_manual(name = "Default",
-                      labels = c("Good", "Bad"),
-                      values=c("#00BFC4", "#F8766D")) +
+    scale_fill_manual(values=c("#F8766D", "#00BFC4")) +
     theme_minimal()
 }
 
@@ -108,8 +106,7 @@ Count.Plot <- function(data, column.name) {
   ggplot(combined_df, aes(x=combined_df[,column.name], y=count, fill=as.factor(class))) +
     geom_bar(stat="identity", position="dodge") +
     labs(x = column.name, y="Count", fill="Class") +
-    scale_fill_manual(labels = c("Good", "Bad"),
-                      values=c("#00BFC4", "#F8766D")) +
+    scale_fill_manual(values=c("#F8766D", "#00BFC4")) +
     theme_minimal()
 }
 
@@ -126,8 +123,7 @@ Density.Plot <- function(data, column.name) {
     labs(title = paste("Distribution of", column.name, "by Default"),
          x = column.name,
          y = "Density") +
-    scale_fill_manual(labels = c("Good", "Bad"),
-                      values = c("#00BFC4", "#F8766D"), name = "Default") +
+    scale_fill_manual(values = c("#F8766D", "#00BFC4"), name = "Default") +
     theme_minimal()
 }
 
@@ -199,11 +195,11 @@ Get.First.n.PCs <- function(pca.data, n=4) {
 #================================== Naive Bayes ================================
 #===============================================================================
 
-NB.Model <- function(data, train = 0.7) {
+NB.Model <- function(data) {
   
   # Split the data into training and testing sets on PCA
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(data), nrow(data) * train) # 70% for training
+  train_index <- sample(nrow(data), nrow(data) * 0.7) # 70% for training
   train_data <- data[train_index, ]
   train_label <- as.factor(data[train_index,"Default"])
   test_data <- data[-train_index, ]
@@ -266,7 +262,7 @@ NB.Model <- function(data, train = 0.7) {
 #===============================================================================
 
 # This function takes in non PCA like data.
-KNN.Model <- function(data, train = 0.7) {
+KNN.Model <- function(data) {
   
   # One-Hot Encoding Without Removing the First Column
   dummy <- dummyVars(" ~ .", data=data)
@@ -277,7 +273,7 @@ KNN.Model <- function(data, train = 0.7) {
   
   # Split the data into training and testing sets
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(dummy.data_std), nrow(dummy.data_std) * train) # 70% for training
+  train_index <- sample(nrow(dummy.data_std), nrow(dummy.data_std) * 0.7) # 70% for training
   train_data <- dummy.data_std[train_index, ]
   train_label <- as.factor(dummy.data_std[train_index,"Default"])
   test_data <- dummy.data_std[-train_index, ]
@@ -358,7 +354,7 @@ KNN.Model <- function(data, train = 0.7) {
 #======================================= LDA ===================================
 #===============================================================================
 
-LDA.Model <- function(data, train = 0.7) {
+LDA.Model <- function(data) {
   
   # Select the qualitative columns in the dataset
   qual_cols <- sapply(data, is.character)
@@ -401,7 +397,7 @@ LDA.Model <- function(data, train = 0.7) {
   
   # Split the data into training and testing sets
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(short_germandata), nrow(short_germandata) * train) # 70% for training
+  train_index <- sample(nrow(short_germandata), nrow(short_germandata) * 0.7) # 70% for training
   train_data <- dummy.data_std[train_index, ]
   train_label <- as.factor(short_germandata[train_index,"Default"])
   test_data <- dummy.data_std[-train_index, ]
@@ -459,7 +455,7 @@ LDA.Model <- function(data, train = 0.7) {
 #======================================= QDA ===================================
 #===============================================================================
  
-QDA.Model <- function(data, train = 0.7) {
+QDA.Model <- function(data) {
   
   # Select the qualitative columns in the dataset
   qual_cols <- sapply(data, is.character)
@@ -502,7 +498,7 @@ QDA.Model <- function(data, train = 0.7) {
   
   # Split the data into training and testing sets
   set.seed(123) # for reproducibility
-  train_index <- sample(nrow(short_germandata), nrow(short_germandata) * train) # 70% for training
+  train_index <- sample(nrow(short_germandata), nrow(short_germandata) * 0.7) # 70% for training
   train_data <- dummy.data_std[train_index, ]
   train_label <- as.factor(short_germandata[train_index,"Default"])
   test_data <- dummy.data_std[-train_index, ]
@@ -568,14 +564,14 @@ QDA.Model <- function(data, train = 0.7) {
 #===============================================================================
 
 # Example: dict["A12"] -> "0 to 200 DM"
-name.dict = c(
+colname.dict = c(
   "A11" = "Less than 0 DM",
    "A12" = "0 to 200 DM",
    "A13" = "More than 200 DM",
    "A14" = "No checking account",
    "A30" = "No credit taken or all credit paid back",
    "A31" = "All credits at this bank paid back",
-   "A32" = "Existing credits paid back until now",
+   "A32" = "Existing credits bac back until now",
    "A33" = "Delay in paying off credit in the past",
    "A34" = "Critical account or other credits existing",
    "A40" = "Car (new)",
@@ -584,7 +580,7 @@ name.dict = c(
    "A43" = "Radio/television",
    "A44" = "Domestic appliances",
    "A45" = "Repairs",
-   "A46" = "Education",
+   "A46" = "Ecuation",
    "A47" = "Vacation",
    "A48" = "Retraining",
    "A49" = "Business",

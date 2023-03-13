@@ -21,8 +21,8 @@ library(ROSE)        # for SMOTE
 #library(mlbench)
 library(fastDummies) # For Get Dummies
 library(pROC)        # for PCA
-library(corrplot)
 source("Stat387-Proj-HelperFunctions.R")
+#library()
 # rm(list=ls())
 ```
 
@@ -64,10 +64,6 @@ balanced.dummy.german <- ROSE(Default ~ ., data = dummy.german, seed = 123)$data
 
 ```{r}
 Balance.Plot(balanced.dummy.german)
-
-corrplot(cor(dummy.german), method="square")
-corrplot(cor(dummy.german), method="number")
-
 ```
 
 # Value Counts For Each Class Type

@@ -23,7 +23,7 @@ library(naivebayes)
 ```{r read}
 german <- read.csv("germancredit.csv", header=T) |> 
   rename(checking = checkingstatus1) |> 
-  mutate(status = ifelse(status  %in% c("A91", "A94"), "A96", status),
+  mutate(status_fix = ifelse(status  %in% c("A91", "A94"), "A96", status),
          .after = status)
 
 # Example: dict["A12"] -> "0 to 200 DM"
@@ -33,7 +33,7 @@ dict = c("A11" = "Less than 0 DM",
          "A14" = "No checking account",
          "A30" = "No credit taken or all credit paid back",
          "A31" = "All credits at this bank paid back",
-         "A32" = "Existing credits paid back until now",
+         "A32" = "Existing credits bac back until now",
          "A33" = "Delay in paying off credit in the past",
          "A34" = "Critical account or other credits existing",
          "A40" = "Car (new)",
@@ -42,7 +42,7 @@ dict = c("A11" = "Less than 0 DM",
          "A43" = "Radio/television",
          "A44" = "Domestic appliances",
          "A45" = "Repairs",
-         "A46" = "Education",
+         "A46" = "Ecuation",
          "A47" = "Vacation",
          "A48" = "Retraining",
          "A49" = "Business",
@@ -90,7 +90,8 @@ dict = c("A11" = "Less than 0 DM",
 
 
 ```{r}
-lm(Default ~ ., data = german) |> summary()
+set.seed(1)
+
 ```
 
 
