@@ -35,17 +35,18 @@ german <- read.csv("germancredit.csv", header=T) |>
 dummy <- dummyVars(" ~ .", data=german, fullRank = TRUE)
 newgerman <- data.frame(predict(dummy, newdata = german))
 dim(newgerman)
+train = 1
+test = 0.5
 ```
 
 ## Exploratory
 
 ```{r}
-german.lm = lm(Default ~ ., german)
-
+german.lm = lm(Default ~ checkingA14, newgerman)
 summary(german.lm)
-
-train = 1
-test = 0.5
+german.lg = glm(Default ~ checkingA14, newgerman, family = "binomial")
+summary(german.lg)
+plot(german.lg)
 ```
 
 ```{r grouping}
@@ -70,8 +71,8 @@ german.named$duration |> unique() |> sort()
 ```
 
 ```{r}
-qda_comb_result1
-qda_comb_result2
+# qda_comb_result1
+# qda_comb_result2
 ```
 
 
@@ -286,7 +287,8 @@ QDA.Model <- function(data, train = 1, test = 0.5) {
   false_positives_percent <- false_positives / total_negatives * 100
   
   # Print the false positives percentage
-  print(paste0("False positives percentage: ", round(false_positives_percent,3), "%"))
+  print(paste0("False positives percentage: ",
+               round(false_positives_percent,3), "%"))
   
   return(list(false_positives_percent,round(acc,2)))
 }
@@ -700,7 +702,7 @@ nb.pca.result4[]
 # RESULTS
 
 ```{r}
-comb_result1 <- cbind(RFE_4_feature = result[2],RFE_10_feature= result2[2],PC_5 = pca.result[2], PC_10 = pca.result2[2])
+comb_result1 <- cbind(RFE_4_feature = lda.result[2], RFE_10_feature= lda.result2[2], PC_5 = lda.pca.result[2], PC_10 = lda.pca.result2[2])
 
 qda_comb_result1 <- cbind(RFE_4_feature = qda.result[2],RFE_10_feature= qda.result2[2],PC_5 = qda.pca.result[2], PC_10 = qda.pca.result2[2])
 
@@ -710,7 +712,7 @@ knn_comb_result1 <- cbind(RFE_4_feature = knn.result[2],RFE_10_feature= knn.resu
 
 nb_comb_result1 <- cbind(RFE_4_feature = nb.result[2],RFE_10_feature= nb.result2[2],PC_5 = nb.pca.result[2], PC_10 = nb.pca.result2[2])
 
-comb_result2 <- cbind(RFE_4_feature =result3[2],RFE_10_feature=result4[2],PC_5 = pca.result3[2], PC_10 = pca.result4[2])
+comb_result2 <- cbind(RFE_4_feature =lda.result3[2],RFE_10_feature=lda.result4[2],PC_5 = lda.pca.result3[2], PC_10 = lda.pca.result4[2])
 
 qda_comb_result2 <- cbind(RFE_4_feature =qda.result3[2],RFE_10_feature=qda.result4[2],PC_5 = qda.pca.result3[2], PC_10 = qda.pca.result4[2])
 
@@ -733,7 +735,7 @@ knitr::kable(comb_result, "simple",
 
 ```{r}
 
-comb_result1 <- cbind(RFE_4_feature = result[1],RFE_10_feature= result2[1],PC_5 = pca.result[1], PC_10 = pca.result2[1])
+comb_result1 <- cbind(RFE_4_feature = lda.result[1], RFE_10_feature= lda.result2[1],PC_5 = lda.pca.result[1], PC_10 = lda.pca.result2[1])
 
 qda_comb_result1 <- cbind(RFE_4_feature = qda.result[1],RFE_10_feature= qda.result2[1],PC_5 = qda.pca.result[1], PC_10 = qda.pca.result2[1])
 
@@ -743,7 +745,7 @@ knn_comb_result1 <- cbind(RFE_4_feature = knn.result[1],RFE_10_feature= knn.resu
 
 nb_comb_result1 <- cbind(RFE_4_feature = nb.result[1],RFE_10_feature= nb.result2[1],PC_5 = nb.pca.result[1], PC_10 = nb.pca.result2[1])
 
-comb_result2 <- cbind(RFE_4_feature =result3[1],RFE_10_feature=result4[1],PC_5 = pca.result3[1], PC_10 = pca.result4[1])
+comb_result2 <- cbind(RFE_4_feature =lda.result3[1],RFE_10_feature=lda.result4[1],PC_5 = lda.pca.result3[1], PC_10 = lda.pca.result4[1])
 
 qda_comb_result2 <- cbind(RFE_4_feature =qda.result3[1],RFE_10_feature=qda.result4[1],PC_5 = qda.pca.result3[1], PC_10 = qda.pca.result4[1])
 
@@ -760,6 +762,4 @@ rownames(comb_result) <- c("LDA(std)","LDA(balance)","QDA(std)","QDA(balance)", 
 knitr::kable(comb_result, "simple",
              caption = "False Positive Rates")
 
-comb_result
-qda_comb_result1
 ```
