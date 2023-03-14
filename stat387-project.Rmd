@@ -18,65 +18,116 @@ library(caret)      # Classification/Regression Training
 library(randomForest) # Random forest
 library(naivebayes) 
 library(corrplot)
+library(fastDummies)
 source("Stat387-Proj-HelperFunctions.R")
 # rm(list=ls())
 ```
 
+```{r function}
+Plot.Correlation <- function(df, column.name, main.title="") {
+  
+  # create a contingency table
+  table_df <- table(df[,column.name], df$Default)
+  # print(as.data.frame(table_df))
+  
+  # plot the heatmap
+  ggplot(data = as.data.frame(table_df), 
+         aes(x = Var1, y = Var2, fill = Freq)) +
+    geom_tile() +
+    scale_fill_gradient(low = "white", high = "red") +
+    scale_x_discrete(labels = c("No", "Yes")) +
+    scale_y_discrete(labels = c("Yes", "No")) +
+    theme_minimal() +
+    theme(panel.border = element_rect(color = "black", fill = NA,
+                                      linewidth = .5)) +
+    labs(x = main.title, y = "Default?",
+         title = paste("Correlation Heatmap for",
+                       as.character(column.name)))
+}
+
+# Plot.Correlation(german.dummy, "checkingA14",
+#                  as.character(name.dict["A14"]))
+```
+
 ```{r read}
 german <- read.csv("germancredit.csv", header=T) |> 
-  rename(checking = checkingstatus1) 
-
-german.num = german |> select_if(is.numeric) |> select(-c("Default"))
-
-german.cat = german |> select_if(is.character)
+  rename(checking = checkingstatus1) |> 
+  mutate(installment = ifelse(installment == 1, "< 20%",
+                              ifelse(installment == 2, "20 - 25%",
+                                     ifelse(installment == 3, "25 - 35%",
+                                            "> 35%"))))
 # |> 
 #   mutate(status_fix = ifelse(status  %in% c("A91", "A94"), "A96", status),
 #          .after = status)
 
+german.num = german |> select_if(is.numeric)
+
+german.cat = german |> select_if(is.character)
+
+name.dict[["A11"]]
+as.list(name.dict)[["A11"]]
+
+german.desc = german.cat |> 
+  mutate_at(vars(-c("installment")), ~as.character(name.dict[.])) |> 
+  cbind(german.num)
+
+german.desc
+
+german.dummy = GetDummies(german)
+
+german.dummy.drop = GetDummies(german, TRUE)
 ```
 
 # Exploratory
 
+\newpage
+
 ```{r summary}
 set.seed(123)
 
-summary(german)
-names(german.num)
+summary(german.cat)
+summary(german.num)
+# names(german.num)
 ```
 
-The `german` dataset contains data about loan applicants (borrower) of a German credit institution from 1994. There are 1,000 observations and 21 variables, of which 13 are categorical and 8 are numeric. Each observation represents one customer. 
-Categorical Variables
-* checking - Status of existing checking account
-* history - Credit history of borrower
-* purpose - Purpose of loan application
-* savings - Status of savings/bonds account
-* employ - Current length of employment
-* status - Marital status and sex
-* others - Indicate if someone else will be involved in the repayment or is guaranteeing the loan
-* property - Collateral for loan
-* otherplans - Type of installment plans the borrower already has
-* housing - Residential status of borrower
-* job - Current type of employment
-* tele - Indicate if phone number is registered under the borrower's name
-* foreign - Indicate if the borrower is a foreign worker
+```{r RFE}
+RFE(german.dummy, 10)
+RFE(german.dummy.drop, 10)
+```
 
-Numeric Variables
-* Default - Specify if the borrower fully repaid their loan
-* duration - Duration of loan (in months)
-* amount - Amount of money borrowed (DM)
-* installment - Installment 
-* residence - Length of time living at current residence (in years, 4 = 4+)
-* age - age of customer (in years)
-* cards - Number of existing credits at this bank
-* liable - Number of people being liable to provide maintenance for
 
-```{r corrplot}
+```{r fullcorrplot}
 cor(german.num) |> corrplot(method = "number", type = "lower", 
                         tl.col = "grey20", number.cex = 1, bg = "grey30",
-                        title = "Correlation Plot of Numeric Predictors")
+                        title = "Correlation Plot of Numeric Predictors",
+                        mar = c(0,0,2,0), diag = FALSE)
+```
+
+```{r logistic}
+german.log = glm(Default ~ ., german, family = "binomial")
+german.log.sum = summary(german.log)
+german.log.names = data.frame(german.log.sum$coef[german.log.sum$coef[,4] <= .05, 4]) |> row.names()
+
+german.log.sig = glm(Default ~ checking + duration + history + purpose + 
+                       amount + savings + installment + otherplans,
+                     german, family = "binomial")
+summary(german.log.sig)
 ```
 
 
+```{r corr}
+# german.log.names
+# Plot.Correlation(german.dummy, "checkingA14", "Checking: No checking account")
+for(name in german.log.names) {
+  if(grepl(".A.", name)) {
+    label = paste0(name.dict[str_extract(name, "A[0-9]+")] |> as.character(), "?")
+  }
+  else {
+    label = paste0(name |> str_to_title(), "?")
+  }
+  print(Plot.Correlation(german.dummy, name, label))
+}
+```
 
 # One-Hot Encoding
 
@@ -91,7 +142,7 @@ head(newgerman)
 # Value Counts For Each Class Type
 
 ```{r}
-Count.Plot <- function(data, column.name) {  
+Count.Plot <- function(data, column.name, main.title="", xlab = "", a = 0, h = .5) {  
   german.0.default <- data[data$Default == 0, ]
   german.1.default <- data[data$Default == 1, ]
   
@@ -111,37 +162,81 @@ Count.Plot <- function(data, column.name) {
   combined_df <- rbind(counts.df.0, counts.df.1)
   
   # Create the plot
-  ggplot(combined_df, aes(x = combined_df[,column.name], y = count, fill = as.factor(class))) +
+  ggplot(combined_df, 
+         aes(x = combined_df[,column.name], y = count, 
+             fill = as.factor(class))) +
     geom_bar(stat = "identity", position = "dodge") +
-    labs(x = column.name, y = "Count", fill = "Default") +
-    scale_fill_manual(labels = c("Good", "Bad"),
+    labs(x = xlab, y = "Count", fill = "Default?",
+         title = main.title) +
+    scale_fill_manual(labels = c("No", "Yes"),
                       values = c("#00BFC4", "#F8766D")) +
-    theme_minimal()
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle=a, hjust=h),
+          panel.background = element_rect(color = "black",
+                                          fill = NA,
+                                          linewidth = .5))
 }
 ```
 
 ## Plotting Checking Status Count Per Class
 
 ```{r}
-Count.Plot(german, "checking")
+Count.Plot(german.desc, "checking", "Default vs Checking Status", "Checking Status")
 ```
 
 ## Plotting History Count Per Class
 
 ```{r}
-Count.Plot(german, "history")
+Count.Plot2 <- function(data, column.name, main.title="", xlab = "", a = 0, h = .5) {  
+  german.0.default <- data[data$Default == 0, ]
+  german.1.default <- data[data$Default == 1, ]
+  
+  checkingstatus.counts.0 <- table(german.0.default[column.name])
+  checkingstatus.counts.1 <- table(german.1.default[column.name])
+  
+  counts.df.0 <- as.data.frame(checkingstatus.counts.0)
+  counts.df.1 <- as.data.frame(checkingstatus.counts.1)
+
+  colnames(counts.df.0) <- c(column.name, "count")
+  colnames(counts.df.1) <- c(column.name, "count")
+  
+  counts.df.0 <- counts.df.0 %>% mutate(class = 0)
+  counts.df.1 <- counts.df.1 %>% mutate(class = 1)
+
+  # Combine the two data frames
+  combined_df <- rbind(counts.df.0, counts.df.1)
+
+  # Create the plot
+  ggplot(combined_df, 
+         aes(x = fct_inorder(.data[[column.name]]), y = count, 
+             fill = as.factor(class))) +
+    geom_bar(stat = "identity", position = "dodge") +
+    labs(x = xlab, y = "Count", fill = "Default?",
+         title = main.title) +
+    scale_fill_manual(labels = c("No", "Yes"),
+                      values = c("#00BFC4", "#F8766D")) +
+    scale_x_discrete(labels = function(x) str_wrap(x, width=20)) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle=a, hjust=h),
+          panel.background = element_rect(color = "black",
+                                          fill = NA,
+                                          linewidth = .5))
+}
+Count.Plot2(german.desc, "history", "Default vs Credit History", "Credit History")
 ```
 
 ## Plotting Purpose Count Per Class
 
 ```{r}
-Count.Plot(german, "purpose")
+Count.Plot(german.desc, "purpose", "Default vs Purpose of Loan", "Purpose of Loan", 90, 1)
 ```
 
 ## Plotting Savings Count Per Class
 
 ```{r}
-Count.Plot(german, "savings")
+
+
+Count.Plot2(german.desc, "savings", "Default vs Savings Account", "Savings Account")
 ```
 
 ## Plotting Employ Count Per Class
@@ -149,6 +244,23 @@ Count.Plot(german, "savings")
 ```{r}
 Count.Plot(german, "employ")
 ```
+
+```{r}
+Count.Plot(german.desc, "others")
+```
+
+
+```{r}
+
+
+Count.Plot2(german.desc, "installment", "Default vs Installment Percentage", "Installment Percentage")
+```
+
+```{r}
+Count.Plot(german.desc, "housing", "Default vs Residential Status", "Residential Status")
+
+```
+
 
 # Displaying Duration For Each Class
 

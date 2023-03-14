@@ -563,15 +563,15 @@ QDA.Model <- function(data) {
 #======================================= DICT ==================================
 #===============================================================================
 
-# Example: name.dict["A12"] -> "0 to 200 DM"
-name.dict = c(
+# Example: name.dict[["A12"]] -> "0 to 200 DM"
+name.dict = data.frame(
    "A11" = "Less than 0 DM",
    "A12" = "0 to 200 DM",
    "A13" = "More than 200 DM",
    "A14" = "No checking account",
    "A30" = "No credit taken or all credit paid back",
    "A31" = "All credits at this bank paid back",
-   "A32" = "Existing credits bac back until now",
+   "A32" = "Existing credits paid back until now",
    "A33" = "Delay in paying off credit in the past",
    "A34" = "Critical account or other credits existing",
    "A40" = "Car (new)",
@@ -605,12 +605,12 @@ name.dict = c(
    "A102" = "Co-applicant",
    "A103" = "Guarantor",
    "A121" = "Real estate",
-   "A122" = "Building society savings agreement/life insurance",
+   "A122" = "Life insurance",
    "A123" = "Car or other",
    "A124" = "Unknown/no property",
    "A141" = "Bank",
    "A142" = "Stores",
-   "A143" = "None",
+   "A143" = "No other installment plans",
    "A151" = "Rent",
    "A152" = "Own",
    "A153" = "Free",
@@ -621,7 +621,7 @@ name.dict = c(
    "A191" = "None",
    "A192" = "Yes",
    "A201" = "Yes",
-   "A202" = "No"
+   "A202" = "Not a foreign worker"
 )
 
 
